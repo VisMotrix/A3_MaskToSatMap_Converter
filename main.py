@@ -1,8 +1,3 @@
-# This is a sample Python script.
-
-# Press Umschalt+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
-
 # ToDo
 # 1 read and save layers cfg
 # 2 Read in tile images
@@ -22,13 +17,6 @@ class Surface:
     name: str = ""
     path: str = "path"
     mask_color: tuple[int, int, int] = (255, 255, 255)
-    surface_avgc: tuple[int, int, int] = (255, 255, 255)
-
-
-
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Strg+F8 to toggle the breakpoint.
 
 
 def paa_image_avg(path):
@@ -106,5 +94,3 @@ def find_paa_path(rvmat_path):
 if __name__ == '__main__':
     surfaces = read_layers_cfg('a3_SourceData/layers.cfg')
     replace_mask_color("a3_SourceData/mask_underground.tiff", surfaces, "a3_SourceData/sat_img.tiff")
-
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
