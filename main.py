@@ -19,7 +19,8 @@ import numpy as np
 class Surface:
     name: str = ""
     path: str = "path"
-    color: tuple[int,int,int] = (255, 255, 255)
+    mask_color: tuple[int, int, int] = (255, 255, 255)
+    surface_avgc: tuple[int, int, int] = (255, 255, 255)
 
 
 
@@ -38,14 +39,14 @@ def paa_image_avg(path):
     """
     path = Path(path)
     data = np.fromfile(path, dtype=np.uint8)
-    if not( data[1] == 0xFF and data[0] == 0x01): return None # dxt1 file!
+    if not( data[1] == 0xFF and data[0] == 0x01): return 0, 0, 0, 255  # dxt1 file!
 
     avg = data[0x0e:0x12] # bgra
     avg_r = avg[2]
     avg_g = avg[1]
     avg_b = avg[0]
     avg_a = avg[3]
-    return (avg_r, avg_g, avg_b, avg_a)
+    return avg_r, avg_g, avg_b, avg_a
 
 
 def read_layers_cfg(path):
@@ -60,7 +61,7 @@ def read_layers_cfg(path):
     matches = re.finditer(pattern_name_rgb, all)
 
     for match in matches:
-        surfaces[match.group(1)] = Surface(name=match.group(1), path="", color=(int(match.group(2)), int(match.group(3)), int(match.group(4))))
+        surfaces[match.group(1)] = Surface(name=match.group(1), path="", mask_color=(int(match.group(2)), int(match.group(3)), int(match.group(4))))
 
     for key in surfaces.keys():
         pattern_name_path = r"class\s+" + key + r"\s+{\s+.*\n\s*material\w*=\w*(.*)"
@@ -70,8 +71,11 @@ def read_layers_cfg(path):
         for match in matches:
             surfaces[key].path = match.group(1).replace(";", "").replace('"', "")
 
-    print(surfaces)
+    return surfaces
 
+def surface_avg(surfaces):
+    #for surface in surfaces:
+    return
 
 
 
@@ -80,6 +84,7 @@ def read_layers_cfg(path):
 if __name__ == '__main__':
     avgc = paa_image_avg("a3_SourceData/cyt_ung_texture_01_co.paa")
     print(avgc)
-    read_layers_cfg('a3_SourceData/layers.cfg')
+    surfaces = read_layers_cfg('a3_SourceData/layers.cfg')
+    surface_avg(surfaces)
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
