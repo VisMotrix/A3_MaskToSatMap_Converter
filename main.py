@@ -12,11 +12,16 @@
 import re
 from dataclasses import dataclass
 
+from pathlib import Path
+import numpy as np
+
 @dataclass
 class Surface:
-    name = ""
-    path = "path"
-    color = (255, 255, 255)
+    name: str = ""
+    path: str = "path"
+    color: tuple[int,int,int] = (255, 255, 255)
+
+
 
 
 
