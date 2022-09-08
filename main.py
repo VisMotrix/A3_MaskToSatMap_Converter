@@ -39,7 +39,7 @@ def paa_image_avg(path):
     """
     path = Path(path)
     data = np.fromfile(path, dtype=np.uint8)
-    if not( data[1] == 0xFF and data[0] == 0x01): return (0, 0, 0) # dxt1 file!
+    if not( data[1] == 0xFF and data[0] == 0x01): return (0, 0, 0) # dxt1 file?
 
     avg = data[0x0e:0x12] # bgra
     avg_r = avg[2]
@@ -55,8 +55,10 @@ def replace_mask_color(mask_path, surfaces: Dict[str, Surface], target_path):
     data = np.array(img)
 
     for surf in surfaces.values():
-        avg_c = paa_image_avg(surf.path)
-
+        # calculate average color from texture stored in surface
+        paa_path = find_paa_path(surf.path)
+        avg_c = paa_image_avg(paa_path)
+        # replace color from surface with average color in mask
         data[(data == surf.color).all(axis = -1)] = avg_c
 
     out = Image.fromarray(data)
@@ -88,16 +90,16 @@ def read_layers_cfg(path):
 
     return surfaces
 
-def surface_avg(surfaces):
-    #for surface in surfaces:
-    return
+def find_paa_path(rvmat_path):
+    file = open(rvmat_path)
+    for line in file:
+        if "_CO.paa" in line:
+            return line.split("=")[1].replace(";", "").replace('"', "")
 
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    avgc = paa_image_avg("a3_SourceData/cyt_ung_texture_01_co.paa")
-    print(avgc)
     surfaces = read_layers_cfg('a3_SourceData/layers.cfg')
-    surface_avg(surfaces)
+    replace_mask_color("a3_SourceData/mask_underground.tiff", surfaces, "a3_SourceData/sat_img.tiff")
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
