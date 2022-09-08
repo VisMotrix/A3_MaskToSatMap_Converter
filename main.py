@@ -13,15 +13,15 @@ import re
 from dataclasses import dataclass
 
 from pathlib import Path
+from typing import Dict
 import numpy as np
+from PIL import Image
 
 @dataclass
 class Surface:
     name: str = ""
     path: str = "path"
     color: tuple[int,int,int] = (255, 255, 255)
-
-
 
 
 
@@ -38,14 +38,29 @@ def paa_image_avg(path):
     """
     path = Path(path)
     data = np.fromfile(path, dtype=np.uint8)
-    if not( data[1] == 0xFF and data[0] == 0x01): return None # dxt1 file!
+    if not( data[1] == 0xFF and data[0] == 0x01): return (0, 0, 0) # dxt1 file!
 
     avg = data[0x0e:0x12] # bgra
     avg_r = avg[2]
     avg_g = avg[1]
     avg_b = avg[0]
     avg_a = avg[3]
-    return (avg_r, avg_g, avg_b, avg_a)
+    return (avg_r, avg_g, avg_b) #, avg_a)
+
+
+def replace_mask_color(mask_path, surfaces: Dict[str, Surface], target_path):
+
+    img = Image.open(mask_path).convert('RGB')
+    data = np.array(img)
+
+    for surf in surfaces.values():
+        avg_c = paa_image_avg(surf.path)
+
+        data[(data == surf.color).all(axis = -1)] = avg_c
+
+    out = Image.fromarray(data)
+    out.save(target_path)
+
 
 
 def read_layers_cfg(path):
@@ -71,8 +86,6 @@ def read_layers_cfg(path):
             surfaces[key].path = match.group(1).replace(";", "").replace('"', "")
 
     print(surfaces)
-
-
 
 
 
