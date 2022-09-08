@@ -52,6 +52,7 @@ def paa_image_avg(path):
 def replace_mask_color(mask_path, surfaces: Dict[str, Surface], target_path):
 
     img = Image.open(mask_path).convert('RGB')
+    print("Mask loaded")
     data = np.array(img)
 
     for surf in surfaces.values():
@@ -60,13 +61,16 @@ def replace_mask_color(mask_path, surfaces: Dict[str, Surface], target_path):
         avg_c = paa_image_avg(paa_path)
         # replace color from surface with average color in mask
         data[(data == surf.mask_color).all(axis = -1)] = avg_c
+        print(f"replaced color for material {surf.name}: {surf.mask_color} to {avg_c}")
 
+    print(f"Exporting sat map to {target_path}")
     out = Image.fromarray(data)
     out.save(target_path)
 
 
 
 def read_layers_cfg(path):
+    print("Reading Colormap")
     layers_cfg = open(path, "r")
     all = "".join(layers_cfg.readlines())
 
