@@ -59,7 +59,7 @@ def replace_mask_color(mask_path, surfaces: Dict[str, Surface], target_path):
         paa_path = find_paa_path(surf.path)
         avg_c = paa_image_avg(paa_path)
         # replace color from surface with average color in mask
-        data[(data == surf.color).all(axis = -1)] = avg_c
+        data[(data == surf.mask_color).all(axis = -1)] = avg_c
 
     out = Image.fromarray(data)
     out.save(target_path)
@@ -91,10 +91,11 @@ def read_layers_cfg(path):
     return surfaces
 
 def find_paa_path(rvmat_path):
-    file = open(rvmat_path)
-    for line in file:
-        if "_CO.paa" in line:
-            return line.split("=")[1].replace(";", "").replace('"', "")
+    rvmat_path = r"P:\\" + rvmat_path
+    with open(rvmat_path) as file:
+        for line in file:
+            if "_CO.paa" in line:
+                return r"P:\\" + line.split("=")[1].replace(";", "").replace('"', "").strip()
 
 
 # Press the green button in the gutter to run the script.
