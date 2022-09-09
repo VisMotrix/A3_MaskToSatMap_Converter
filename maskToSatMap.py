@@ -70,16 +70,18 @@ def read_layers_cfg(path):
 def replace_mask_color(mask_path, surfaces: Dict[str, Surface], target_path):
     """replaces the mask colors with the average colors of the corresponding texture as defined in layers.cfg"""
     img = Image.open(mask_path).convert('RGB')
-    print("Mask loaded")
+    print(f"Mask loaded {img.size}px")
     data = np.array(img)
+
 
     for surf in surfaces.values():
         # calculate average color from texture stored in surface
         paa_path = find_paa_path(surf.path)
         avg_c = get_paa_avg_col(paa_path)
         # replace color from surface with average color in mask
+        # ToDO Add a counter so we can see how many px where replaced ! Must be in sum the same as the mask size !
         data[(data == surf.mask_color).all(axis = -1)] = avg_c
-        print(f"replaced color for material {surf.name}: {surf.mask_color} to {avg_c}")
+        print(f"replaced {np.count_nonzero(data[(data == surf.mask_color).all(axis = -1)])}color for material {surf.name}: {surf.mask_color}\t to average ground texture color {avg_c}")
 
     print(f"Exporting sat map to {target_path}")
     out = Image.fromarray(data)
@@ -124,30 +126,28 @@ if __name__ == '__main__':
     print(sys.argv)
     parser = argparse.ArgumentParser()
     parser.add_argument("layers", type=str, help="path of the layers.cfg file")
-    parser.add_argument("-m", "--mask", type=str, help="the terrain mask image file")
+    parser.add_argument("mask", type=str, help="the terrain mask .tiff image file")
     parser.add_argument("-wd", "--workdrive", type=str, default="P:\\", help="drive letter of the Arma3 tools work drive")
     parser.add_argument("-o", "--output", type=str, default="./sat_img.tiff", help="path of the resulting sat view image file")
     parser.add_argument("-D","--Debug", action="store_true", help="increases verbosity")
-    parser.add_argument("-cwd, --working-directory", help="working directory of this python file")
-    args = parser.parse_args(sys.argv)
-
-
-    if args.working_directory: 
-        assert Path(args.working_directory ).exists, "invalid working directory"
-        os.chdir(args.working_directory)
-
-    assert Path(args.layers).exists, f"Layers file {args.layers} does not exist"
-    assert Path(args.output).exists, f"Output file {args.output} does not exist"
-    assert Path(args.mask).exists, f"Mask file {args.mask} does not exist"
+    # parser.add_argument("-cwd, --working_directory", help="working directory of this python file")
+    # args = parser.parse_args(sys.argv)
+    args = parser.parse_args()
+    
+    assert os.path.exists(args.layers), f"Layers file {args.layers} does not exist"
+    assert os.path.exists(args.mask),   f"Mask file {args.mask} does not exist"
+    
+    if (args.output != "./sat_img.tiff"):
+        assert os.path.exists(args.output),  f"Output directory {args.output} does not exist"
     
 
-    if args.Debug: DEBUGGING = True
-    if args.workdrive: 
-        assert Path(args.workdrive), "invalid workdrive"
-        drv:str = args.workdrive
-        if not drv.endswith("\\") and not drv.endswith("/"):
-            drv += "\\"
-        WORKDRIVE = drv
+    # if args.Debug: DEBUGGING = True
+    # if args.workdrive: 
+    #     assert Path(args.workdrive), "invalid workdrive"
+    #     drv:str = args.workdrive
+    #     if not drv.endswith("\\") and not drv.endswith("/"):
+    #         drv += "\\"
+    #     WORKDRIVE = drv
 
     start(args.layers,args.mask,args.output)
     
