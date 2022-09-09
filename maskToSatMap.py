@@ -19,7 +19,7 @@ import argparse
 import sys
 import os
 from dataclasses import dataclass
-
+import time
 
 from pathlib import Path
 from typing import Dict
@@ -71,8 +71,10 @@ def replace_mask_color(mask_path, surfaces: Dict[str, Surface], target_path):
     """replaces the mask colors with the average colors of the corresponding texture as defined in layers.cfg"""
     img = Image.open(mask_path).convert('RGB')
     print(f"Mask loaded {img.size}px")
-    data = np.array(img)
+    mask = np.array(img)
+    mask_size = int(mask.size/3)
 
+    replace_counter = 0
 
     for surf in surfaces.values():
         # calculate average color from texture stored in surface
@@ -80,11 +82,15 @@ def replace_mask_color(mask_path, surfaces: Dict[str, Surface], target_path):
         avg_c = get_paa_avg_col(paa_path)
         # replace color from surface with average color in mask
         # ToDO Add a counter so we can see how many px where replaced ! Must be in sum the same as the mask size !
-        data[(data == surf.mask_color).all(axis = -1)] = avg_c
-        print(f"replaced {np.count_nonzero(data[(data == surf.mask_color).all(axis = -1)])}color for material {surf.name}: {surf.mask_color}\t to average ground texture color {avg_c}")
+        replace_px = (mask == surf.mask_color).all(axis = -1)
+        mask[replace_px] = avg_c
+        cnt = np.count_nonzero(replace_px)
+        replace_counter += cnt
+        print(f"replaced {cnt} pixels for material {surf.name}: {surf.mask_color}\tto average ground texture color {avg_c}\t\ttotal replaced pixels {replace_counter:,d}/{mask_size:,d}\t {replace_counter/mask_size * 100:3.1f}%")
+        
 
     print(f"Exporting sat map to {target_path}")
-    out = Image.fromarray(data)
+    out = Image.fromarray(mask)
     out.save(target_path)
 
 
@@ -102,8 +108,8 @@ def get_paa_avg_col(path):
     returns:
     """
     path = Path(path)
-    data = np.fromfile(path, dtype=np.uint8)
-    if not( data[1] == 0xFF and data[0] == 0x01): return (0, 0, 0) # dxt1 file?
+    data = np.memmap(path, dtype=np.uint8)
+    if not(data[1] == 0xFF and data[0] == 0x01): return (0, 0, 0) # dxt1 file?
 
     avg = data[0x0e:0x12] # bgra
     avg_r = avg[2]
