@@ -38,14 +38,14 @@ class Surface:
     mask_color: int = 0xFFFFFF
     avg_color: tuple[int,int,int] = (255, 0, 255)
 
-    @staticmethod
-    def get_mask_avg_col_map(surfaces: list[Surface]):
-        col_map = np.full((256**3,3), (255,0,255), dtype=np.uint8)
-        nmap={}
-        for surf in surfaces:
-            col_map[surf.mask_color] = surf.avg_color
-            nmap[surf.mask_color] = surf.name
-        return col_map, nmap
+
+def get_mask_avg_col_map(surfaces: list[Surface]):
+    col_map = np.full((256**3,3), (255,0,255), dtype=np.uint8)
+    nmap={}
+    for surf in surfaces:
+        col_map[surf.mask_color] = surf.avg_color
+        nmap[surf.mask_color] = surf.name
+    return col_map, nmap
 
         
 
@@ -95,7 +95,7 @@ def replace_mask_color(mask_path, surfaces: Dict[str, Surface], target_path):
 
     # get color map from loaded layers.cfg and contained textures average colors, maps int32 colors (index) to RGB tuples from paa files
     logging.info("Building colormap from textures")
-    color_map, name_map = Surface.get_mask_avg_col_map(surfaces.values())
+    color_map, name_map = get_mask_avg_col_map(surfaces.values())
 
     # apply new lookup table to index array to get new sat image
     logging.info("Creating sat map")
@@ -142,7 +142,7 @@ def get_paa_avg_col(path):
     avg_r = avg[2]
     avg_g = avg[1]
     avg_b = avg[0]
-    avg_a = avg[3]
+    # avg_a = avg[3]
     # avg_r, avg_g, avg_b = random.randbytes(3)
     return avg_r, avg_g, avg_b
 
