@@ -40,14 +40,18 @@ class Surface:
 
 
 def get_mask_avg_col_map(surfaces: list[Surface]):
+    """build colormap from loaded mask colors to loaded average texture colors
+    
+    param surfaces: list of Surface objects
+    returns: array(256^3,3) colormap, dict[int,str] mask color to texture name map
+    """
     col_map = np.full((256**3,3), (255,0,255), dtype=np.uint8)
     nmap={}
     for surf in surfaces:
         col_map[surf.mask_color] = surf.avg_color
         nmap[surf.mask_color] = surf.name
     return col_map, nmap
-
-        
+  
 
 def read_layers_cfg(path):
     """ Reads a arma3 layers.cfg and graps mask color to suface material information
