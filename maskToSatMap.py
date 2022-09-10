@@ -99,12 +99,13 @@ def replace_mask_color(mask_path, surfaces: Dict[str, Surface], target_path):
 
     # apply new lookup table to index array to get new sat image
     logging.info("Creating sat map")
-    sat_map = color_map[mask_32,:]
+    sat_map = color_map[mask_32]
 
     # check for missing textures, 0xFF00FF (pink) is default value of color map
     color_map_32: np.ndarray = color_map.dot(np.array([0x10000, 0x100, 0x1], dtype=np.int32))
-    if 0xFF00FF in color_map_32[mask_32]:
-        logging.warning("There are missing textures. Areas will show as pink on sat map.")
+    error_pixels_cnt = np.count_nonzero(color_map_32[mask_32] == 0xFF00FF)
+    if error_pixels_cnt:
+        logging.warning(f"There are missing textures. Areas will show as pink on sat map. Total pixel errors: {error_pixels_cnt}")
 
     # check colors used
     used_colors = np.unique(mask_32)
@@ -133,16 +134,16 @@ def get_paa_avg_col(path):
     param path: the path to the paa file
     returns:
     """
-    # path = Path(find_paa_path(path))
-    # data = np.memmap(path, dtype=np.uint8)
-    # if not(data[1] == 0xFF and data[0] == 0x01): return (0, 0, 0) # dxt1 file?
+    path = Path(find_paa_path(path))
+    data = np.memmap(path, dtype=np.uint8)
+    if not(data[1] == 0xFF and data[0] == 0x01): return (0, 0, 0) # dxt1 file?
 
-    # avg = data[0x0e:0x12] # bgra
-    # avg_r = avg[2]
-    # avg_g = avg[1]
-    # avg_b = avg[0]
-    # avg_a = avg[3]
-    avg_r, avg_g, avg_b = random.randbytes(3)
+    avg = data[0x0e:0x12] # bgra
+    avg_r = avg[2]
+    avg_g = avg[1]
+    avg_b = avg[0]
+    avg_a = avg[3]
+    # avg_r, avg_g, avg_b = random.randbytes(3)
     return avg_r, avg_g, avg_b
 
 def load_average_colors(surfaces: dict[str, Surface]):
@@ -200,5 +201,5 @@ if __name__ == '__main__':
     #     WORKDRIVE = drv
 
     start(args.layers, args.mask, args.output)
-    # start("a3_SourceData/layers.cfg","a3_SourceData/mask_underground_err.tiff", "a3_SourceData/sat_map.tiff")
+    # start("a3_SourceData/layers.cfg","a3_SourceData/mask_underground.tiff", "a3_SourceData/sat_map.tiff")
     

@@ -56,6 +56,11 @@ maskToSatMap.exe "layers.cfg" "Mask\mask_underground.tiff"
 maskToSatMap.exe "layers.cfg" "Mask\mask_underground.tiff" -o "Sat\sat_map.tiff" -cwd "P:\cytech\Cytech_Underground_Map\Cytech_Underground_Terrain\source\Images"
 ```
 
+Please note:  
+If there are missing textures, the areas will show as pink (#FF00FF) on the sat map. Our program checks for any pink pixels after sat map creation and prints an error if it finds any.
+If the average value of any texture happens to be pink, then the program will interpret this as error. In this case please disregard.
+
+
 # Build
 
 ```
@@ -65,4 +70,3 @@ pyinstaller maskToSatMap.py -F -w
 
 # Contribute
 If you have any improvements or feature requests feel free to open an issue or a pull request.  
-
