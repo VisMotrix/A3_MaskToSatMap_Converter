@@ -14,12 +14,15 @@
 #     You should have received a copy of the GNU General Public License
 #     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from __future__ import annotations
+import random
 import re
 import argparse
 import sys
 import os
 from dataclasses import dataclass
 import time
+import logging
 
 from pathlib import Path
 from typing import Dict
@@ -41,7 +44,7 @@ def read_layers_cfg(path):
     param path: the path to the layers.cfg file
     returns: dict of [texturename, Surface]
     """
-    print("Reading Layers.cfg")
+    logging.info("Reading Layers.cfg")
     layers_cfg = open(path, "r")
     all = "".join(layers_cfg.readlines())
     surfaces = {}
@@ -62,15 +65,14 @@ def read_layers_cfg(path):
             surfaces[key].path = match.group(1).replace(";", "").replace('"', "")
 
     
-    if DEBUGGING:
-        print ("layers.cfg read")
-        print (surfaces)
+    logging.debug("layers.cfg read")
+    logging.debug (surfaces)
     return surfaces
 
 def replace_mask_color(mask_path, surfaces: Dict[str, Surface], target_path):
     """replaces the mask colors with the average colors of the corresponding texture as defined in layers.cfg"""
     img = Image.open(mask_path).convert('RGB')
-    print(f"Mask loaded {img.size}px")
+    logging.info(f"Mask loaded {img.size}px")
     mask = np.array(img)
     mask_size = int(mask.size/3)
 
@@ -120,10 +122,16 @@ def get_paa_avg_col(path):
 
 
 def start(layers, mask, output):
-    print("Starting ...")
+    logging.info("Starting ...")
+    logging.info("Reading layers.cfg")
     surfaces = read_layers_cfg(layers)
+    logging.info("Loading average colors from textures")
+    surfaces = load_average_colors(surfaces)
+    logging.info("Starting sat map generation")
+    tim = time.time()
     replace_mask_color(mask, surfaces, output)
-    print("... Done")
+    logging.info(f"Elapsed {tim-time.time()}")
+    logging.info("... Done")
     return
 
 # Press the green button in the gutter to run the script.
@@ -139,6 +147,11 @@ if __name__ == '__main__':
     # parser.add_argument("-cwd, --working_directory", help="working directory of this python file")
     # args = parser.parse_args(sys.argv)
     args = parser.parse_args()
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    sh = logging.StreamHandler(sys.stdout)
+    sh.setLevel(logging.DEBUG)
+    logger.addHandler(sh)
     
     assert os.path.exists(args.layers), f"Layers file {args.layers} does not exist"
     assert os.path.exists(args.mask),   f"Mask file {args.mask} does not exist"
@@ -147,7 +160,10 @@ if __name__ == '__main__':
         assert os.path.exists(args.output),  f"Output directory {args.output} does not exist"
     
 
-    # if args.Debug: DEBUGGING = True
+    # if args.Debug: 
+    #     logger.setLevel(logging.DEBUG)
+    # else:
+    #     logger.setLevel(logging.INFO)
     # if args.workdrive: 
     #     assert Path(args.workdrive), "invalid workdrive"
     #     drv:str = args.workdrive
