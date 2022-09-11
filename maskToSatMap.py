@@ -32,7 +32,8 @@ from PIL import Image
 WORKDRIVE = "P:\\"
 
 ERRORCOLOR = (255,0,255)
-ERRORCOLOR_32 = 0xFF00FF
+
+ERRORCOLOR_32 = ((ERRORCOLOR[0] << 16) + (ERRORCOLOR[1] << 8) + ERRORCOLOR[2] )
 
 @dataclass
 class Surface:
@@ -125,7 +126,7 @@ def replace_mask_color(mask_path, surfaces: Dict[str, Surface], target_path):
     color_map_32: np.ndarray = color_map.dot(np.array([0x10000, 0x100, 0x1], dtype=np.int32))
     error_pixels_cnt = np.count_nonzero(color_map_32[mask_32] == ERRORCOLOR_32)
     if error_pixels_cnt:
-        logging.warning(f"There are missing textures. Areas will show as pink on sat map. Total pixel errors: {error_pixels_cnt}")
+        logging.warning(f"There is missing texture information. Areas will show as pink on sat map. Total pixel errors: {error_pixels_cnt}")
 
     # check colors used
     used_colors = np.unique(mask_32)
@@ -172,7 +173,6 @@ def get_paa_avg_col(path):
     if not(data[1] == 0xFF and data[0] == 0x01): return ERRORCOLOR # dxt1 file?
 
     avg_b, avg_g, avg_r  = data[0x0e:0x11] # bgr
-    avg_r, avg_g, avg_b = random.randbytes(3)
     return avg_r, avg_g, avg_b
 
 def load_average_colors(surfaces: dict[str, Surface]):
@@ -204,7 +204,7 @@ if __name__ == '__main__':
     sh.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
     sh.setLevel(logging.DEBUG)
     logger.addHandler(sh)
-    # print(sys.argv)
+
     parser = argparse.ArgumentParser()
     parser.add_argument("layers", type=str, help="path of the layers.cfg file")
     parser.add_argument("mask", type=str, help="the terrain mask .tiff image file")
@@ -213,8 +213,7 @@ if __name__ == '__main__':
     parser.add_argument("-D","--Debug", action="store_true", help="increases verbosity")
     # parser.add_argument("-cwd, --working_directory", help="working directory of this python file")
 
-    args = parser.parse_args(sys.argv)
-    # args = parser.parse_args(["maskToSatMap.py", "a3_SourceData/layers.cfg","a3_SourceData/mask_underground.tiff", "-o", "a3_SourceData/sat_map.tiff"])
+    args = parser.parse_args()
     
     assert os.path.exists(args.layers), f"Layers file {args.layers} does not exist"
     assert os.path.exists(args.mask),   f"Mask file {args.mask} does not exist"
@@ -223,16 +222,16 @@ if __name__ == '__main__':
         assert os.path.exists(args.output),  f"Output directory {args.output} does not exist"
     
 
-    # if args.Debug: 
-    #     logger.setLevel(logging.DEBUG)
-    # else:
-    #     logger.setLevel(logging.INFO)
-    # if args.workdrive: 
-    #     assert Path(args.workdrive), "invalid workdrive"
-    #     drv:str = args.workdrive
-    #     if not drv.endswith("\\") and not drv.endswith("/"):
-    #         drv += "\\"
-    #     WORKDRIVE = drv
+    if args.Debug: 
+        logger.setLevel(logging.DEBUG)
+    else:
+        logger.setLevel(logging.INFO)
+    if args.workdrive: 
+        assert Path(args.workdrive), "invalid workdrive"
+        drv:str = args.workdrive
+        if not drv.endswith("\\") and not drv.endswith("/"):
+            drv += "\\"
+        WORKDRIVE = drv
 
     start(args.layers, args.mask, args.output)
     
