@@ -15,25 +15,23 @@
 #     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from __future__ import annotations
-import random
 import re
 import argparse
 import sys
-import os
 from dataclasses import dataclass
-import time
 import logging
 
 from pathlib import Path
 from typing import Dict
 import numpy as np
 from PIL import Image
+Image.MAX_IMAGE_PIXELS = None
 
-WORKDRIVE = "P:\\"
+WORKDRIVE = Path("P:\\")
 
-ERRORCOLOR = (255,0,255)
+ERRORCOLOR = 255, 0, 255
 
-ERRORCOLOR_32 = ((ERRORCOLOR[0] << 16) + (ERRORCOLOR[1] << 8) + ERRORCOLOR[2] )
+ERRORCOLOR_32 = (ERRORCOLOR[0] << 16) + (ERRORCOLOR[1] << 8) + ERRORCOLOR[2]
 
 @dataclass
 class Surface:
@@ -53,6 +51,7 @@ def get_mask_avg_col_map(surfaces: list[Surface]):
     nmap={}
     for surf in surfaces:
         col_map[surf.mask_color] = surf.avg_color
+        logging.debug(f"Mapping {surf.mask_color:06X} to {surf.avg_color}")
         nmap[surf.mask_color] = surf.name
     return col_map, nmap
   
@@ -106,13 +105,18 @@ def read_layers_cfg(path):
 def replace_mask_color(mask_path, surfaces: Dict[str, Surface], target_path):
     """replaces the mask colors with the average colors of the corresponding texture as defined in layers.cfg"""
     # load mask
-    img = Image.open(mask_path)
+    try:
+        img = Image.open(mask_path).convert("RGB")
+    except Image.DecompressionBombError:
+        logging.error("The mask file is too large, try using the -is parameter with your total pixel count.")
     logging.info(f"Mask loaded {img.size}px")
     mask = np.array(img)
+    del img
 
     # convert rgb tuple into 32 bit int 0x00RRGGBB, by shifting and adding via dot product
     logging.info("Processing mask")
     mask_32 = mask.dot(np.array([0x10000, 0x100, 0x1], dtype=np.int32))
+    del mask
 
     # get color map from loaded layers.cfg and contained textures average colors, maps int32 colors (index) to RGB tuples from paa files
     logging.info("Building colormap from textures")
@@ -130,6 +134,7 @@ def replace_mask_color(mask_path, surfaces: Dict[str, Surface], target_path):
 
     # check colors used
     used_colors = np.unique(mask_32)
+    logging.debug(f"Mask colors: " + ', '.join('{:06X}'.format(a) for a in used_colors))
     # check for unused textures
     for col in used_colors:
         name_map.pop(col, "")
@@ -145,10 +150,10 @@ def replace_mask_color(mask_path, surfaces: Dict[str, Surface], target_path):
 def find_paa_path(rvmat_path):
     """Extracts the path of the paa file corresponding to the given rvmat file"""
     try:
-        with open(WORKDRIVE + rvmat_path) as file:
+        with open(WORKDRIVE / rvmat_path) as file:
             for line in file:
-                if "_CO.paa" in line:
-                    return WORKDRIVE + line.split("=")[1].replace(";", "").replace('"', "").strip()
+                if "_co.paa" in line.lower():
+                    return WORKDRIVE / line.split("=")[1].replace(";", "").replace('"', "").strip()
     except:
         return None
 
@@ -170,9 +175,12 @@ def get_paa_avg_col(path):
         logging.error(f"Cannot open paa file {paa_path}")
         return ERRORCOLOR
 
-    if not(data[1] == 0xFF and data[0] == 0x01): return ERRORCOLOR # dxt1 file?
+    if not(data[1] == 0xFF and data[0] == 0x01): 
+        logging.error(f"Not DXT1 format {paa_path}")
+        return ERRORCOLOR # dxt1 file?
 
     avg_b, avg_g, avg_r  = data[0x0e:0x11] # bgr
+    logging.debug(f"Avg color for {paa_path}: {avg_r, avg_g, avg_b}")
     return avg_r, avg_g, avg_b
 
 def load_average_colors(surfaces: dict[str, Surface]):
@@ -182,6 +190,7 @@ def load_average_colors(surfaces: dict[str, Surface]):
             continue
         # calculate average color from texture stored in surface
         surf.avg_color = get_paa_avg_col(surf.path)
+        logging.debug(surf)
     return surfaces
 
 
@@ -211,27 +220,32 @@ if __name__ == '__main__':
     parser.add_argument("-wd", "--workdrive", type=str, default="P:\\", help="drive letter of the Arma3 tools work drive")
     parser.add_argument("-o", "--output", type=str, default="./sat_img.tiff", help="path of the resulting sat view image file")
     parser.add_argument("-D","--Debug", action="store_true", help="increases verbosity")
-    # parser.add_argument("-cwd, --working_directory", help="working directory of this python file")
 
     args = parser.parse_args()
+
+    layers_path = Path(args.layers)
+    mask_path = Path(args.mask)
+    out_path = Path(args.output)
+
     
-    assert os.path.exists(args.layers), f"Layers file {args.layers} does not exist"
-    assert os.path.exists(args.mask),   f"Mask file {args.mask} does not exist"
+    assert layers_path.exists(), f"Layers file {args.layers} does not exist"
+    assert mask_path.exists(),   f"Mask file {args.mask} does not exist"
     
-    if (args.output != "./sat_img.tiff"):
-        assert os.path.exists(args.output),  f"Output directory {args.output} does not exist"
-    
+    # if (args.output != "./sat_img.tiff"):
+    #     try:
+    #         out_path.resolve(strict=True)
+    #     except:
+    #         assert False, f"Output file name {args.output} could not be resolved"
+
 
     if args.Debug: 
         logger.setLevel(logging.DEBUG)
     else:
         logger.setLevel(logging.INFO)
     if args.workdrive: 
-        assert Path(args.workdrive), "invalid workdrive"
-        drv:str = args.workdrive
-        if not drv.endswith("\\") and not drv.endswith("/"):
-            drv += "\\"
+        drv = Path(args.workdrive)
+        assert drv.exists(), "invalid workdrive"
         WORKDRIVE = drv
 
-    start(args.layers, args.mask, args.output)
+    start(layers_path, mask_path, out_path)
     

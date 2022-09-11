@@ -65,7 +65,7 @@ If the average value of any texture happens to be pink, then the program will in
 
 ```
 pip install pyinstaller
-pyinstaller maskToSatMap.py -F -w
+pyinstaller maskToSatMap.py -F
 ```
 
 # Contribute
