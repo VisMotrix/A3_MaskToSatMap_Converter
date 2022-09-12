@@ -1,7 +1,7 @@
 # A3_MaskToSatMap_Converter <!-- omit in toc -->
 [![License](https://img.shields.io/badge/license-GNU-v3.svg?style=flat)](https://www.gnu.org/licenses/gpl-3.0.txt)
 
-A Arma 3 Mask To SatMap Converter
+A Arma 3 Mask To SatMap Converter by Atom_Monky & ExXeptional
 
 # Table of Contents <!-- omit in toc -->
 - [Info](#info)
@@ -17,9 +17,10 @@ The tool takes the Mask image and looks at each pixel color, according to the la
 In that way we can use the mask and the ground texture to generate a nice satmap really fast.
 
 # Images
-<img src="imgs\surfacefade_1.jpg" alt="drawing" style="max-width:60%; text-align: center;"/>
+<img src="imgs\conversion_1.png" alt="drawing" style="max-width:100%; text-align: center;"/>
 <details>
-<summary style="font-size:14pt">See More</summary>
+<summary style="font-size:14pt">Ground texture to Satellite map fade examples</summary>
+<img src="imgs\surfacefade_1.jpg" alt="drawing" style="max-width:50%; text-align: center;"/>
 <img src="imgs\surfacefade_2.jpg" alt="drawing" style="max-width:50%; text-align: center;"/>
 <img src="imgs\surfacefade_3.jpg" alt="drawing" style="max-width:50%; text-align: center;"/>
 <img src="imgs\surfacefade_4.jpg" alt="drawing" style="max-width:50%; text-align: center;"/>
