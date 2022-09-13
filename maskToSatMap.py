@@ -102,7 +102,7 @@ def read_layers_cfg(path):
     logging.debug (surfaces)
     return surfaces
 
-def replace_mask_color(mask_path, surfaces: Dict[str, Surface], target_path):
+def replace_mask_color(mask_path, surfaces: Dict[str, Surface]):
     """replaces the mask colors with the average colors of the corresponding texture as defined in layers.cfg"""
     # load mask
     try:
@@ -141,11 +141,8 @@ def replace_mask_color(mask_path, surfaces: Dict[str, Surface], target_path):
     if name_map:
         logging.warning("Unused textures: " + ", ".join(name_map.values()))
 
-    # export
-    logging.info(f"Exporting sat map to {target_path}")
-    out = Image.fromarray(sat_map)
-    out.save(target_path)
-
+    return sat_map
+    
 
 def find_paa_path(rvmat_path):
     """Extracts the path of the paa file corresponding to the given rvmat file"""
@@ -193,15 +190,51 @@ def load_average_colors(surfaces: dict[str, Surface]):
         logging.debug(surf)
     return surfaces
 
+def noise_generation(sat_map, rgb_variation):
+    ########### Try 1
+    # print(sat_map)
+    # for y in range(sat_map.size[1]):
+    #     for x in range(sat_map.size[0]):
+    #         sat_map[x,y] =  sat_map[x,y][0] +(np.random.choice([1,-1]) * np.random.randint(1,rgb_variation[0]) )
+    # with np.nditer(sat_map, op_flags=['readwrite']) as it:
+    #     for x in it:
+    #         x[...] = 100 + x
 
-def start(layers, mask, output):
+    ########### Try 2
+    # output = sat_map
+    # amount = 0.1
+    
+    # nb_salt = np.ceil(amount * output.size * 0.5)
+    # coords = [np.random.randint(0, i - 1, int(nb_salt)) for i in output.shape]
+    # output[coords] = 1
+
+    # # add pepper
+    # nb_pepper = np.ceil(amount* output.size * 0.5)
+    # coords = [np.random.randint(0, i - 1, int(nb_pepper)) for i in output.shape]
+    # output[coords] = 0
+
+    ########### Try 3
+
+    return sat_map
+
+def export_map(sat_map, target_path):
+    # export
+    logging.info(f"Exporting sat map to {target_path}")
+    out = Image.fromarray(sat_map)
+    out.save(target_path)
+
+def start(layers, mask, output, rgb_variation):
     logging.info("Starting ...")
     logging.info("Reading layers.cfg")
     surfaces = read_layers_cfg(layers)
     logging.info("Loading average colors from textures")
     surfaces = load_average_colors(surfaces)
     logging.info("Starting sat map generation")
-    replace_mask_color(mask, surfaces, output)
+    sat_map = replace_mask_color(mask, surfaces)
+
+    sat_map = noise_generation(sat_map, rgb_variation)
+    logging.info("Saving sat map")
+    export_map(sat_map ,output)
     logging.info("... Done")
     return
 
@@ -219,6 +252,7 @@ if __name__ == '__main__':
     parser.add_argument("mask", type=str, help="the terrain mask .tiff image file")
     parser.add_argument("-wd", "--workdrive", type=str, default="P:\\", help="drive letter of the Arma3 tools work drive")
     parser.add_argument("-o", "--output", type=str, default="./sat_img.tiff", help="path of the resulting sat view image file")
+    parser.add_argument("-rgbv", "--rgbvariation", type=int, default=0, nargs=3, help="slight variation of the average ground texture color in +/- color range")
     parser.add_argument("-D","--Debug", action="store_true", help="increases verbosity")
 
     args = parser.parse_args()
@@ -226,16 +260,15 @@ if __name__ == '__main__':
     layers_path = Path(args.layers)
     mask_path = Path(args.mask)
     out_path = Path(args.output)
-
+    
+    rgb_variation = args.rgbvariation
+    if rgb_variation == 0:
+        rgb_variation = [0,0,0]
+    
+    print(rgb_variation)
     
     assert layers_path.exists(), f"Layers file {args.layers} does not exist"
     assert mask_path.exists(),   f"Mask file {args.mask} does not exist"
-    
-    # if (args.output != "./sat_img.tiff"):
-    #     try:
-    #         out_path.resolve(strict=True)
-    #     except:
-    #         assert False, f"Output file name {args.output} could not be resolved"
 
 
     if args.Debug: 
@@ -246,6 +279,8 @@ if __name__ == '__main__':
         drv = Path(args.workdrive)
         assert drv.exists(), "invalid workdrive"
         WORKDRIVE = drv
+    
+    
 
-    start(layers_path, mask_path, out_path)
+    start(layers_path, mask_path, out_path, rgb_variation)
     
