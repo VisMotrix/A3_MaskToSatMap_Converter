@@ -27,6 +27,8 @@ In that way we can use the mask and the ground texture to generate a nice satmap
 <img src="imgs\surfacefade_5.jpg" alt="drawing" style="max-width:50%; text-align: center;"/>
 <img src="imgs\surfacefade_6.jpg" alt="drawing" style="max-width:50%; text-align: center;"/>
 <img src="imgs\surfacefade_7.jpg" alt="drawing" style="max-width:50%; text-align: center;"/>
+
+<img src="imgs\noise_generation_1.png" alt="drawing" style="max-width:80%; text-align: center;"/>
 </details>  
 
 Surface and Satmap texture blends pretty good
@@ -35,9 +37,9 @@ Surface and Satmap texture blends pretty good
 # Usage
 
 ```sh
-python maskToSatMap.py [layers] [mask] [-o, --output OUTPUT] [-wd, --workdrive WORKDRIVE] [-cwd, --working_directory  DIRECTORY] [-D, --Debug] 
+python maskToSatMap.py [layers] [mask] [-o, --output OUTPUT] [-wd, --workdrive WORKDRIVE] [-cwd, --working_directory  DIRECTORY] [-rgbv RGBVARIATION RGBVARIATION RGBVARIATION] [-rgbt RGBTHRESHOLD] [-D, --Debug] 
 - OR -
-maskToSatMap.exe [layers] [mask] [-o, --output OUTPUT] [-wd, --workdrive WORKDRIVE] [-cwd, --working_directory  DIRECTORY] [-D, --Debug] 
+maskToSatMap.exe [layers] [mask] [-o, --output OUTPUT] [-wd, --workdrive WORKDRIVE] [-cwd, --working_directory  DIRECTORY] [-rgbv RGBVARIATION RGBVARIATION RGBVARIATION] [-rgbt RGBTHRESHOLD] [-D, --Debug] 
 ```  
   
 | Parameter | Function |  Default |
@@ -47,6 +49,8 @@ maskToSatMap.exe [layers] [mask] [-o, --output OUTPUT] [-wd, --workdrive WORKDRI
 | -o, --output | path and filename of output file | ./sat_map.tiff |  
 | -wd, --workdrive |  drive letter of Arma3 workdrive | P:\ |  
 | -cwd, --working_directory | set the working directory of the program<br/>paths will be relative to this directory | ./ |
+| -rgbv, --rgbvariation |  set rgb variation | 0 0 0 |  
+| -rgbt, --rgbthreshold |  rgb variation threshold | 0.0 |  
 | -D, --Debug |  enables verbose output |  |  
 
 Example:
@@ -54,7 +58,7 @@ Example:
 maskToSatMap.exe "layers.cfg" "Mask\mask_underground.tiff"
 ```
 ```sh
-maskToSatMap.exe "layers.cfg" "Mask\mask_underground.tiff" -o "Sat\sat_map.tiff" -cwd "P:\cytech\Cytech_Underground_Map\Cytech_Underground_Terrain\source\Images"
+maskToSatMap.exe "layers.cfg" "Mask\mask_underground.tiff" -o "Sat\sat_map.tiff" -cwd "P:\cytech\Cytech_Underground_Map\Cytech_Underground_Terrain\source\Images" -rgbv 1 1 1 -rgbt 0.90
 ```
 
 Please note:  

@@ -141,7 +141,7 @@ def replace_mask_color(mask_path, surfaces: Dict[str, Surface]):
     if name_map:
         logging.warning("Unused textures: " + ", ".join(name_map.values()))
 
-    return sat_map
+    return Image.fromarray(sat_map)
     
 
 def find_paa_path(rvmat_path):
@@ -190,51 +190,44 @@ def load_average_colors(surfaces: dict[str, Surface]):
         logging.debug(surf)
     return surfaces
 
-def noise_generation(sat_map, rgb_variation):
-    ########### Try 1
-    # print(sat_map)
-    # for y in range(sat_map.size[1]):
-    #     for x in range(sat_map.size[0]):
-    #         sat_map[x,y] =  sat_map[x,y][0] +(np.random.choice([1,-1]) * np.random.randint(1,rgb_variation[0]) )
-    # with np.nditer(sat_map, op_flags=['readwrite']) as it:
-    #     for x in it:
-    #         x[...] = 100 + x
+def noise_generation(img_sat_map, rgb_variation, rgb_threshold):
+    """generates a noise for a given threshold and a given pixel variation range"""
+    # checking inputs
+    if rgb_threshold == 0:
+        logging.info(f"Skipping noise generation - The rgb threshold was set to 0 or not given")
+        return img_sat_map
+    elif sum(rgb_variation) == 0:
+        logging.info(f"Skipping noise generation - The rgb variation was set to 0,0,0 or not given")
+        return img_sat_map
 
-    ########### Try 2
-    # output = sat_map
-    # amount = 0.1
-    
-    # nb_salt = np.ceil(amount * output.size * 0.5)
-    # coords = [np.random.randint(0, i - 1, int(nb_salt)) for i in output.shape]
-    # output[coords] = 1
+    # replacing pixels
+    for x in range(img_sat_map.width):
+        for y in range(img_sat_map.height):
+            if float(np.random.rand(1))<rgb_threshold:
+                color = img_sat_map.getpixel((x, y))
+                r = (np.random.choice(list(range((color[0] - rgb_variation[0]), (color[0] + rgb_variation[0])))))
+                g = (np.random.choice(list(range((color[1] - rgb_variation[1]), (color[1] + rgb_variation[1])))))
+                b = (np.random.choice(list(range((color[2] - rgb_variation[2]), (color[2] + rgb_variation[2])))))
+                img_sat_map.putpixel( (x,y), (r,g,b))
+    return img_sat_map
 
-    # # add pepper
-    # nb_pepper = np.ceil(amount* output.size * 0.5)
-    # coords = [np.random.randint(0, i - 1, int(nb_pepper)) for i in output.shape]
-    # output[coords] = 0
-
-    ########### Try 3
-
-    return sat_map
-
-def export_map(sat_map, target_path):
+def export_map(img_sat_map, target_path):
     # export
     logging.info(f"Exporting sat map to {target_path}")
-    out = Image.fromarray(sat_map)
-    out.save(target_path)
+    img_sat_map.save(target_path)
 
-def start(layers, mask, output, rgb_variation):
+def start(layers, mask, output, rgb_variation, rgb_threshold):
     logging.info("Starting ...")
     logging.info("Reading layers.cfg")
     surfaces = read_layers_cfg(layers)
     logging.info("Loading average colors from textures")
     surfaces = load_average_colors(surfaces)
     logging.info("Starting sat map generation")
-    sat_map = replace_mask_color(mask, surfaces)
-
-    sat_map = noise_generation(sat_map, rgb_variation)
+    img_sat_map = replace_mask_color(mask, surfaces)
+    logging.info("Starting sat map noise generation")
+    img_sat_map = noise_generation(img_sat_map, rgb_variation, rgb_threshold)
     logging.info("Saving sat map")
-    export_map(sat_map ,output)
+    export_map(img_sat_map ,output)
     logging.info("... Done")
     return
 
@@ -253,6 +246,7 @@ if __name__ == '__main__':
     parser.add_argument("-wd", "--workdrive", type=str, default="P:\\", help="drive letter of the Arma3 tools work drive")
     parser.add_argument("-o", "--output", type=str, default="./sat_img.tiff", help="path of the resulting sat view image file")
     parser.add_argument("-rgbv", "--rgbvariation", type=int, default=0, nargs=3, help="slight variation of the average ground texture color in +/- color range")
+    parser.add_argument("-rgbt", "--rgbthreshold", type=float, default=0.0, help="percentage of overall rgb variation")
     parser.add_argument("-D","--Debug", action="store_true", help="increases verbosity")
 
     args = parser.parse_args()
@@ -261,11 +255,10 @@ if __name__ == '__main__':
     mask_path = Path(args.mask)
     out_path = Path(args.output)
     
+    rgb_threshold = args.rgbthreshold
     rgb_variation = args.rgbvariation
     if rgb_variation == 0:
         rgb_variation = [0,0,0]
-    
-    print(rgb_variation)
     
     assert layers_path.exists(), f"Layers file {args.layers} does not exist"
     assert mask_path.exists(),   f"Mask file {args.mask} does not exist"
@@ -282,5 +275,5 @@ if __name__ == '__main__':
     
     
 
-    start(layers_path, mask_path, out_path, rgb_variation)
+    start(layers_path, mask_path, out_path, rgb_variation, rgb_threshold)
     
