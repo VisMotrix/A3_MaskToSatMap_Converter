@@ -14,6 +14,14 @@
 #     You should have received a copy of the GNU General Public License
 #     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+# TODO: 
+# - switch fast method if ram available
+# - fast method fix noise coverage
+# - brightness noise alternatively
+# - memmap for fast method compare with numba version
+# - fast method try change datatype for less ram consumption (is float64) https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.random.randint.html
+# - change from PIL to opencv?
+
 from __future__ import annotations
 import re
 import argparse
