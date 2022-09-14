@@ -4,15 +4,17 @@
     // Weitere Informationen finden Sie unter https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+
         
         {
-            "name": "Python: Aktuelle Datei",
+            "name": "Python: params",
             "type": "python",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args": ["P:\\cytech\\Cytech_Underground_Map\\Cytech_Underground_Terrain\\source\\Images\\layers.cfg", "P:\\cytech\\Cytech_Underground_Map\\Cytech_Underground_Terrain\\source\\Images\\Mask\\mask_underground.tiff"]
+            "args": ["P:\\cytech\\Cytech_Underground_Map\\Cytech_Underground_Terrain\\source\\Images\\layers.cfg", "P:\\cytech\\Cytech_Underground_Map\\Cytech_Underground_Terrain\\source\\Images\\Mask\\mask_underground.tiff", "-rgbv", "10", "10", "10", "-rgbt", "0.5"]
+            // "P:\cytech\Cytech_Underground_Map\Cytech_Underground_Terrain\source\Images\layers.cfg" "P:\cytech\Cytech_Aboveground_Map\Cytech_Aboveground_Terrain\Source\Images\Mask\mask_aboveground.tif" -rgbv 10 10 10 -rgbt 0.5
         }
     ]
 }

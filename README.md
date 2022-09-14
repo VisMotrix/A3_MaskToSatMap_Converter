@@ -27,6 +27,8 @@ In that way we can use the mask and the ground texture to generate a nice satmap
 <img src="imgs\surfacefade_5.jpg" alt="drawing" style="max-width:50%; text-align: center;"/>
 <img src="imgs\surfacefade_6.jpg" alt="drawing" style="max-width:50%; text-align: center;"/>
 <img src="imgs\surfacefade_7.jpg" alt="drawing" style="max-width:50%; text-align: center;"/>
+
+<img src="imgs\noise_generation_1.png" alt="drawing" style="max-width:80%; text-align: center;"/>
 </details>  
 
 Surface and Satmap texture blends pretty good
@@ -35,26 +37,30 @@ Surface and Satmap texture blends pretty good
 # Usage
 
 ```sh
-python maskToSatMap.py [layers] [mask] [-o, --output OUTPUT] [-wd, --workdrive WORKDRIVE] [-cwd, --working_directory  DIRECTORY] [-D, --Debug] 
+python maskToSatMap.py [layers] [mask] [-o, --output OUTPUT] [-wd, --workdrive WORKDRIVE] [-rgbv R_VARIATION G_VARIATION B_VARIATION] [-nc NOISECOVERAGE] [-D, --Debug] 
 - OR -
-maskToSatMap.exe [layers] [mask] [-o, --output OUTPUT] [-wd, --workdrive WORKDRIVE] [-cwd, --working_directory  DIRECTORY] [-D, --Debug] 
+maskToSatMap.exe [layers] [mask] [-o, --output OUTPUT] [-wd, --workdrive WORKDRIVE] [-rgbv R_VARIATION G_VARIATION B_VARIATION] [-nc NOISECOVERAGE] [-D, --Debug] 
 ```  
   
-| Parameter | Function |  Default |
-| ---- | ----- | ---- |  
-| layers | path to layers.cfg file |  |  
-| mask | path to terrain mask image file |   |  
-| -o, --output | path and filename of output file | ./sat_map.tiff |  
-| -wd, --workdrive |  drive letter of Arma3 workdrive | P:\ |  
-| -cwd, --working_directory | set the working directory of the program<br/>paths will be relative to this directory | ./ |
-| -D, --Debug |  enables verbose output |  |  
+| Parameter | Function |  Default | |
+| ---- | ----- | ---- | ---- |
+| layers | path to layers.cfg file |  |  |
+| mask | path to terrain mask image file |   |  |
+| -o, --output | path and filename of output file | ./sat_map.tiff |  |
+| -wd, --workdrive |  drive letter of Arma3 workdrive | P:\ |  |
+| -rgbv, --rgbvariation |  set rgb variation | 0 0 0 | * |
+| -nc, --noisecoverage |  noise coverage fraction | 0.0 |  * |
+| -D, --Debug |  enables verbose output |  |   |
+
+
+\* can only be used in conjunction, be aware that even with the use of multithreading, the noise generation can take a lot of time depending on your map size. Roughly 30s for 8k\*8k, 15min for 30k\*30k.
 
 Example:
 ```sh
 maskToSatMap.exe "layers.cfg" "Mask\mask_underground.tiff"
 ```
 ```sh
-maskToSatMap.exe "layers.cfg" "Mask\mask_underground.tiff" -o "Sat\sat_map.tiff" -cwd "P:\cytech\Cytech_Underground_Map\Cytech_Underground_Terrain\source\Images"
+maskToSatMap.exe "layers.cfg" "Mask\mask_underground.tiff" -o "Sat\sat_map.tiff" -rgbv 5 5 5 -nc 0.90
 ```
 
 Please note:  
@@ -65,7 +71,7 @@ If the average value of any texture happens to be pink, then the program will in
 # Build
 
 ```
-pip install pyinstaller
+pip install pyinstaller, numpy, numba, Pillow
 pyinstaller maskToSatMap.py -F
 ```
 

@@ -18,12 +18,14 @@ from __future__ import annotations
 import re
 import argparse
 import sys
+import time
 from dataclasses import dataclass
 import logging
 
 from pathlib import Path
 from typing import Dict
 import numpy as np
+import numba as nb
 from PIL import Image
 Image.MAX_IMAGE_PIXELS = None
 
@@ -40,7 +42,6 @@ class Surface:
     mask_color: int = 0xFFFFFF
     avg_color: tuple[int,int,int] = ERRORCOLOR
 
-
 def get_mask_avg_col_map(surfaces: list[Surface]):
     """build colormap from loaded mask colors to loaded average texture colors
     
@@ -54,7 +55,6 @@ def get_mask_avg_col_map(surfaces: list[Surface]):
         logging.debug(f"Mapping {surf.mask_color:06X} to {surf.avg_color}")
         nmap[surf.mask_color] = surf.name
     return col_map, nmap
-  
 
 def read_layers_cfg(path):
     """ Reads a arma3 layers.cfg and graps mask color to suface material information
@@ -102,8 +102,9 @@ def read_layers_cfg(path):
     logging.debug (surfaces)
     return surfaces
 
-def replace_mask_color(mask_path, surfaces: Dict[str, Surface], target_path):
+def replace_mask_color(mask_path, surfaces: Dict[str, Surface]):
     """replaces the mask colors with the average colors of the corresponding texture as defined in layers.cfg"""
+    
     # load mask
     try:
         img = Image.open(mask_path).convert("RGB")
@@ -116,6 +117,7 @@ def replace_mask_color(mask_path, surfaces: Dict[str, Surface], target_path):
     # convert rgb tuple into 32 bit int 0x00RRGGBB, by shifting and adding via dot product
     logging.info("Processing mask")
     mask_32 = mask.dot(np.array([0x10000, 0x100, 0x1], dtype=np.int32))
+
     del mask
 
     # get color map from loaded layers.cfg and contained textures average colors, maps int32 colors (index) to RGB tuples from paa files
@@ -141,11 +143,7 @@ def replace_mask_color(mask_path, surfaces: Dict[str, Surface], target_path):
     if name_map:
         logging.warning("Unused textures: " + ", ".join(name_map.values()))
 
-    # export
-    logging.info(f"Exporting sat map to {target_path}")
-    out = Image.fromarray(sat_map)
-    out.save(target_path)
-
+    return sat_map
 
 def find_paa_path(rvmat_path):
     """Extracts the path of the paa file corresponding to the given rvmat file"""
@@ -193,15 +191,53 @@ def load_average_colors(surfaces: dict[str, Surface]):
         logging.debug(surf)
     return surfaces
 
+def noise_generation(sat_map, rgb_variation, noise_coverage):
+    """generates a noise for a given threshold and a given pixel variation range"""
+    # checking inputs
+    if noise_coverage == 0:
+        logging.info(f"Skipping noise generation - The rgb threshold was set to 0 or not given")
+        return sat_map
+    elif sum(rgb_variation) == 0:
+        logging.info(f"Skipping noise generation - The rgb variation was set to 0,0,0 or not given")
+        return sat_map
 
-def start(layers, mask, output):
+    # rand = ((np.random.rand(*sat_map.shape) - 0.5) * rgb_variation * (np.random.random()<noise_coverage)).astype(np.int8) # uniform distribution
+    # rand = (np.random.randn(*sat_map.shape) * rgb_variation).astype(np.int8) # gaussian distribution
+    # replacing pixels
+    # sat_map =  np.clip(sat_map + rand, a_min=0, a_max=255).astype(np.uint8)
+    sat_map = vec_noise(sat_map, np.array(rgb_variation).astype(np.float64), noise_coverage)
+    return sat_map
+
+@nb.guvectorize(["void(uint8[:], float64[:], float64, uint8[:])"], "(n),(n),() -> (n)" ,target="parallel")
+def vec_noise(rgb, variation, threshold, out):
+    if threshold > np.random.random():
+        rand = ((np.random.rand(3) - 0.5) * variation).astype(np.int8)
+    else:
+        rand = np.zeros(rgb.shape, dtype=np.int8)
+    # rr, rg, rb = rng.integers(rgb - variation, rgb + variation)
+    out[:] = np.clip(rgb + rand, a_min=0, a_max=255).astype(np.uint8)
+
+def export_map(sat_map, target_path):
+    # export
+    logging.info(f"Exporting sat map to {target_path}")
+    Image.fromarray(sat_map).save(target_path)#, compression="lzma")
+
+def start(layers, mask, output, rgb_variation, noise_coverage):
     logging.info("Starting ...")
+    strt = time.time()
     logging.info("Reading layers.cfg")
     surfaces = read_layers_cfg(layers)
     logging.info("Loading average colors from textures")
     surfaces = load_average_colors(surfaces)
+    logging.info(f"\tElapsed {time.time() - strt:.2f} s")
     logging.info("Starting sat map generation")
-    replace_mask_color(mask, surfaces, output)
+    sat_map = replace_mask_color(mask, surfaces)
+    logging.info(f"\tElapsed {time.time() - strt:.2f} s")
+    logging.info("Starting sat map noise generation")
+    sat_map = noise_generation(sat_map, rgb_variation, noise_coverage)
+    logging.info(f"\tElapsed {time.time() - strt:.2f} s")
+    logging.info("Saving sat map")
+    export_map(sat_map ,output)
     logging.info("... Done")
     return
 
@@ -219,6 +255,8 @@ if __name__ == '__main__':
     parser.add_argument("mask", type=str, help="the terrain mask .tiff image file")
     parser.add_argument("-wd", "--workdrive", type=str, default="P:\\", help="drive letter of the Arma3 tools work drive")
     parser.add_argument("-o", "--output", type=str, default="./sat_img.tiff", help="path of the resulting sat view image file")
+    parser.add_argument("-rgbv", "--rgbvariation", type=int, default=0, nargs=3, help="slight variation of the average ground texture color in +/- color range")
+    parser.add_argument("-nc", "--noisecoverage", type=float, default=0.0, help="percentage of overall rgb variation")
     parser.add_argument("-D","--Debug", action="store_true", help="increases verbosity")
 
     args = parser.parse_args()
@@ -226,16 +264,14 @@ if __name__ == '__main__':
     layers_path = Path(args.layers)
     mask_path = Path(args.mask)
     out_path = Path(args.output)
-
+    
+    noise_coverage = args.noisecoverage
+    rgb_variation = args.rgbvariation
+    if rgb_variation == 0:
+        rgb_variation = [0,0,0]
     
     assert layers_path.exists(), f"Layers file {args.layers} does not exist"
     assert mask_path.exists(),   f"Mask file {args.mask} does not exist"
-    
-    # if (args.output != "./sat_img.tiff"):
-    #     try:
-    #         out_path.resolve(strict=True)
-    #     except:
-    #         assert False, f"Output file name {args.output} could not be resolved"
 
 
     if args.Debug: 
@@ -246,6 +282,8 @@ if __name__ == '__main__':
         drv = Path(args.workdrive)
         assert drv.exists(), "invalid workdrive"
         WORKDRIVE = drv
+    
+    
 
-    start(layers_path, mask_path, out_path)
+    start(layers_path, mask_path, out_path, rgb_variation, noise_coverage)
     
