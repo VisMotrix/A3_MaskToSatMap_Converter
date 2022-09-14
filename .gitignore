@@ -3,3 +3,5 @@
 sat_img.tiff
 .venv
 __pycache__
+.vscode/*launch.json
+mask.npy
