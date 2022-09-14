@@ -195,7 +195,6 @@ def load_average_colors(surfaces: dict[str, Surface]):
         logging.debug(surf)
     return surfaces
 
-def noise_generation(img_sat_map, rgb_variation, rgb_threshold):
 def noise_generation(sat_map, rgb_variation, rgb_threshold):
     """generates a noise for a given threshold and a given pixel variation range"""
     # checking inputs
