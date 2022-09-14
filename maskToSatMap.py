@@ -105,19 +105,23 @@ def read_layers_cfg(path):
 
 def replace_mask_color(mask_path, surfaces: Dict[str, Surface]):
     """replaces the mask colors with the average colors of the corresponding texture as defined in layers.cfg"""
-    # load mask
-    try:
-        img = Image.open(mask_path).convert("RGB")
-    except Image.DecompressionBombError:
-        logging.error("The mask file is too large, try using the -is parameter with your total pixel count.")
-    logging.info(f"Mask loaded {img.size}px")
-    mask = np.array(img)
-    del img
+    if Path("mask.npy").exists():
+        mask_32 = np.load("mask.npy")
+    else:
+        # load mask
+        try:
+            img = Image.open(mask_path).convert("RGB")
+        except Image.DecompressionBombError:
+            logging.error("The mask file is too large, try using the -is parameter with your total pixel count.")
+        logging.info(f"Mask loaded {img.size}px")
+        mask = np.array(img)
+        del img
 
-    # convert rgb tuple into 32 bit int 0x00RRGGBB, by shifting and adding via dot product
-    logging.info("Processing mask")
-    mask_32 = mask.dot(np.array([0x10000, 0x100, 0x1], dtype=np.int32))
-    del mask
+        # convert rgb tuple into 32 bit int 0x00RRGGBB, by shifting and adding via dot product
+        logging.info("Processing mask")
+        mask_32 = mask.dot(np.array([0x10000, 0x100, 0x1], dtype=np.int32))
+        np.save("mask.npy", mask_32)
+        del mask
 
     # get color map from loaded layers.cfg and contained textures average colors, maps int32 colors (index) to RGB tuples from paa files
     logging.info("Building colormap from textures")
