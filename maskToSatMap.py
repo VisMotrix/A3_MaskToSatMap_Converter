@@ -18,6 +18,7 @@ from __future__ import annotations
 import re
 import argparse
 import sys
+import time
 from dataclasses import dataclass
 import logging
 
@@ -141,7 +142,7 @@ def replace_mask_color(mask_path, surfaces: Dict[str, Surface]):
     if name_map:
         logging.warning("Unused textures: " + ", ".join(name_map.values()))
 
-    return Image.fromarray(sat_map)
+    return sat_map
     
 
 def find_paa_path(rvmat_path):
@@ -191,30 +192,26 @@ def load_average_colors(surfaces: dict[str, Surface]):
     return surfaces
 
 def noise_generation(img_sat_map, rgb_variation, rgb_threshold):
+def noise_generation(sat_map, rgb_variation, rgb_threshold):
     """generates a noise for a given threshold and a given pixel variation range"""
     # checking inputs
     if rgb_threshold == 0:
         logging.info(f"Skipping noise generation - The rgb threshold was set to 0 or not given")
-        return img_sat_map
+        return sat_map
     elif sum(rgb_variation) == 0:
         logging.info(f"Skipping noise generation - The rgb variation was set to 0,0,0 or not given")
-        return img_sat_map
+        return sat_map
 
+    rand = ((np.random.rand(*sat_map.shape) - 0.5) * rgb_variation * (np.random.random()<rgb_threshold)).astype(np.int8) # uniform distribution
+    #rand = (np.random.randn(*sat_map.shape) * rgb_variation).astype(np.int8) # gaussian distribution
     # replacing pixels
-    for x in range(img_sat_map.width):
-        for y in range(img_sat_map.height):
-            if float(np.random.rand(1))<rgb_threshold:
-                color = img_sat_map.getpixel((x, y))
-                r = (np.random.choice(list(range((color[0] - rgb_variation[0]), (color[0] + rgb_variation[0])))))
-                g = (np.random.choice(list(range((color[1] - rgb_variation[1]), (color[1] + rgb_variation[1])))))
-                b = (np.random.choice(list(range((color[2] - rgb_variation[2]), (color[2] + rgb_variation[2])))))
-                img_sat_map.putpixel( (x,y), (r,g,b))
-    return img_sat_map
+    sat_map =  np.clip(sat_map + rand, a_min=0, a_max=255).astype(np.uint8)
+    return sat_map
 
-def export_map(img_sat_map, target_path):
+def export_map(sat_map, target_path):
     # export
     logging.info(f"Exporting sat map to {target_path}")
-    img_sat_map.save(target_path)
+    Image.fromarray(sat_map).save(target_path)#, compression="lzma")
 
 def start(layers, mask, output, rgb_variation, rgb_threshold):
     logging.info("Starting ...")
@@ -223,11 +220,13 @@ def start(layers, mask, output, rgb_variation, rgb_threshold):
     logging.info("Loading average colors from textures")
     surfaces = load_average_colors(surfaces)
     logging.info("Starting sat map generation")
-    img_sat_map = replace_mask_color(mask, surfaces)
+    sat_map = replace_mask_color(mask, surfaces)
     logging.info("Starting sat map noise generation")
-    img_sat_map = noise_generation(img_sat_map, rgb_variation, rgb_threshold)
+    strt = time.time()
+    sat_map = noise_generation(sat_map, rgb_variation, rgb_threshold)
+    logging.info(f"Elapsed {time.time() - strt:.2f} s")
     logging.info("Saving sat map")
-    export_map(img_sat_map ,output)
+    export_map(sat_map ,output)
     logging.info("... Done")
     return
 
