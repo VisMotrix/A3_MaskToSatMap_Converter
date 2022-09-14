@@ -25,6 +25,7 @@ import logging
 from pathlib import Path
 from typing import Dict
 import numpy as np
+import numba as nb
 from PIL import Image
 Image.MAX_IMAGE_PIXELS = None
 
@@ -205,11 +206,18 @@ def noise_generation(sat_map, rgb_variation, rgb_threshold):
         logging.info(f"Skipping noise generation - The rgb variation was set to 0,0,0 or not given")
         return sat_map
 
-    rand = ((np.random.rand(*sat_map.shape) - 0.5) * rgb_variation * (np.random.random()<rgb_threshold)).astype(np.int8) # uniform distribution
+    # rand = ((np.random.rand(*sat_map.shape) - 0.5) * rgb_variation * (np.random.random()<rgb_threshold)).astype(np.int8) # uniform distribution
     #rand = (np.random.randn(*sat_map.shape) * rgb_variation).astype(np.int8) # gaussian distribution
     # replacing pixels
-    sat_map =  np.clip(sat_map + rand, a_min=0, a_max=255).astype(np.uint8)
+    # sat_map =  np.clip(sat_map + rand, a_min=0, a_max=255).astype(np.uint8)
+    sat_map = vec_noise(sat_map)
     return sat_map
+
+@nb.guvectorize(["void(uint8[:], float64[:], uint8, uint8[:])"], "(n),(n),() -> (n)" ,target="parallel")
+def vec_noise(rgb, variation, threshold, out):
+    rand = (np.random.randn(3) * variation).astype(np.int8)
+    # rr, rg, rb = rng.integers(rgb - variation, rgb + variation)
+    out[:] = rgb + rand if threshold < np.random.random() else 0
 
 def export_map(sat_map, target_path):
     # export
