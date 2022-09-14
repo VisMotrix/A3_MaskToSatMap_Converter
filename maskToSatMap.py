@@ -42,7 +42,6 @@ class Surface:
     mask_color: int = 0xFFFFFF
     avg_color: tuple[int,int,int] = ERRORCOLOR
 
-
 def get_mask_avg_col_map(surfaces: list[Surface]):
     """build colormap from loaded mask colors to loaded average texture colors
     
@@ -56,7 +55,6 @@ def get_mask_avg_col_map(surfaces: list[Surface]):
         logging.debug(f"Mapping {surf.mask_color:06X} to {surf.avg_color}")
         nmap[surf.mask_color] = surf.name
     return col_map, nmap
-  
 
 def read_layers_cfg(path):
     """ Reads a arma3 layers.cfg and graps mask color to suface material information
@@ -106,23 +104,21 @@ def read_layers_cfg(path):
 
 def replace_mask_color(mask_path, surfaces: Dict[str, Surface]):
     """replaces the mask colors with the average colors of the corresponding texture as defined in layers.cfg"""
-    if Path("mask.npy").exists():
-        mask_32 = np.load("mask.npy")
-    else:
-        # load mask
-        try:
-            img = Image.open(mask_path).convert("RGB")
-        except Image.DecompressionBombError:
-            logging.error("The mask file is too large, try using the -is parameter with your total pixel count.")
-        logging.info(f"Mask loaded {img.size}px")
-        mask = np.array(img)
-        del img
+    
+    # load mask
+    try:
+        img = Image.open(mask_path).convert("RGB")
+    except Image.DecompressionBombError:
+        logging.error("The mask file is too large, try using the -is parameter with your total pixel count.")
+    logging.info(f"Mask loaded {img.size}px")
+    mask = np.array(img)
+    del img
 
-        # convert rgb tuple into 32 bit int 0x00RRGGBB, by shifting and adding via dot product
-        logging.info("Processing mask")
-        mask_32 = mask.dot(np.array([0x10000, 0x100, 0x1], dtype=np.int32))
-        np.save("mask.npy", mask_32)
-        del mask
+    # convert rgb tuple into 32 bit int 0x00RRGGBB, by shifting and adding via dot product
+    logging.info("Processing mask")
+    mask_32 = mask.dot(np.array([0x10000, 0x100, 0x1], dtype=np.int32))
+
+    del mask
 
     # get color map from loaded layers.cfg and contained textures average colors, maps int32 colors (index) to RGB tuples from paa files
     logging.info("Building colormap from textures")
@@ -148,7 +144,6 @@ def replace_mask_color(mask_path, surfaces: Dict[str, Surface]):
         logging.warning("Unused textures: " + ", ".join(name_map.values()))
 
     return sat_map
-    
 
 def find_paa_path(rvmat_path):
     """Extracts the path of the paa file corresponding to the given rvmat file"""
@@ -196,46 +191,51 @@ def load_average_colors(surfaces: dict[str, Surface]):
         logging.debug(surf)
     return surfaces
 
-def noise_generation(sat_map, rgb_variation, rgb_threshold):
+def noise_generation(sat_map, rgb_variation, noise_coverage):
     """generates a noise for a given threshold and a given pixel variation range"""
     # checking inputs
-    if rgb_threshold == 0:
+    if noise_coverage == 0:
         logging.info(f"Skipping noise generation - The rgb threshold was set to 0 or not given")
         return sat_map
     elif sum(rgb_variation) == 0:
         logging.info(f"Skipping noise generation - The rgb variation was set to 0,0,0 or not given")
         return sat_map
 
-    # rand = ((np.random.rand(*sat_map.shape) - 0.5) * rgb_variation * (np.random.random()<rgb_threshold)).astype(np.int8) # uniform distribution
-    #rand = (np.random.randn(*sat_map.shape) * rgb_variation).astype(np.int8) # gaussian distribution
+    # rand = ((np.random.rand(*sat_map.shape) - 0.5) * rgb_variation * (np.random.random()<noise_coverage)).astype(np.int8) # uniform distribution
+    # rand = (np.random.randn(*sat_map.shape) * rgb_variation).astype(np.int8) # gaussian distribution
     # replacing pixels
     # sat_map =  np.clip(sat_map + rand, a_min=0, a_max=255).astype(np.uint8)
-    sat_map = vec_noise(sat_map)
+    sat_map = vec_noise(sat_map, np.array(rgb_variation).astype(np.float64), noise_coverage)
     return sat_map
 
-@nb.guvectorize(["void(uint8[:], float64[:], uint8, uint8[:])"], "(n),(n),() -> (n)" ,target="parallel")
+@nb.guvectorize(["void(uint8[:], float64[:], float64, uint8[:])"], "(n),(n),() -> (n)" ,target="parallel")
 def vec_noise(rgb, variation, threshold, out):
-    rand = (np.random.randn(3) * variation).astype(np.int8)
+    if threshold > np.random.random():
+        rand = ((np.random.rand(3) - 0.5) * variation).astype(np.int8)
+    else:
+        rand = np.zeros(rgb.shape, dtype=np.int8)
     # rr, rg, rb = rng.integers(rgb - variation, rgb + variation)
-    out[:] = rgb + rand if threshold < np.random.random() else 0
+    out[:] = np.clip(rgb + rand, a_min=0, a_max=255).astype(np.uint8)
 
 def export_map(sat_map, target_path):
     # export
     logging.info(f"Exporting sat map to {target_path}")
     Image.fromarray(sat_map).save(target_path)#, compression="lzma")
 
-def start(layers, mask, output, rgb_variation, rgb_threshold):
+def start(layers, mask, output, rgb_variation, noise_coverage):
     logging.info("Starting ...")
+    strt = time.time()
     logging.info("Reading layers.cfg")
     surfaces = read_layers_cfg(layers)
     logging.info("Loading average colors from textures")
     surfaces = load_average_colors(surfaces)
+    logging.info(f"\tElapsed {time.time() - strt:.2f} s")
     logging.info("Starting sat map generation")
     sat_map = replace_mask_color(mask, surfaces)
+    logging.info(f"\tElapsed {time.time() - strt:.2f} s")
     logging.info("Starting sat map noise generation")
-    strt = time.time()
-    sat_map = noise_generation(sat_map, rgb_variation, rgb_threshold)
-    logging.info(f"Elapsed {time.time() - strt:.2f} s")
+    sat_map = noise_generation(sat_map, rgb_variation, noise_coverage)
+    logging.info(f"\tElapsed {time.time() - strt:.2f} s")
     logging.info("Saving sat map")
     export_map(sat_map ,output)
     logging.info("... Done")
@@ -256,7 +256,7 @@ if __name__ == '__main__':
     parser.add_argument("-wd", "--workdrive", type=str, default="P:\\", help="drive letter of the Arma3 tools work drive")
     parser.add_argument("-o", "--output", type=str, default="./sat_img.tiff", help="path of the resulting sat view image file")
     parser.add_argument("-rgbv", "--rgbvariation", type=int, default=0, nargs=3, help="slight variation of the average ground texture color in +/- color range")
-    parser.add_argument("-rgbt", "--rgbthreshold", type=float, default=0.0, help="percentage of overall rgb variation")
+    parser.add_argument("-nc", "--noisecoverage", type=float, default=0.0, help="percentage of overall rgb variation")
     parser.add_argument("-D","--Debug", action="store_true", help="increases verbosity")
 
     args = parser.parse_args()
@@ -265,7 +265,7 @@ if __name__ == '__main__':
     mask_path = Path(args.mask)
     out_path = Path(args.output)
     
-    rgb_threshold = args.rgbthreshold
+    noise_coverage = args.noisecoverage
     rgb_variation = args.rgbvariation
     if rgb_variation == 0:
         rgb_variation = [0,0,0]
@@ -285,5 +285,5 @@ if __name__ == '__main__':
     
     
 
-    start(layers_path, mask_path, out_path, rgb_variation, rgb_threshold)
+    start(layers_path, mask_path, out_path, rgb_variation, noise_coverage)
     
