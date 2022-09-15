@@ -39,7 +39,7 @@ Surface and Satmap texture blends pretty good
 ```sh
 python maskToSatMap.py [layers] [mask] [-o, --output OUTPUT] [-wd, --workdrive WORKDRIVE] [-rgbv R_VARIATION G_VARIATION B_VARIATION] [-nc NOISECOVERAGE] [-D, --Debug] 
 - OR -
-maskToSatMap.exe [layers] [mask] [-o, --output OUTPUT] [-wd, --workdrive WORKDRIVE] [-rgbv R_VARIATION G_VARIATION B_VARIATION] [-nc NOISECOVERAGE] [-D, --Debug] 
+maskToSatMap.exe [layers] [mask] [-o, --output OUTPUT] [-wd, --workdrive WORKDRIVE] [-rgbv R_VARIATION G_VARIATION B_VARIATION] [-lumvv VARIATION] [-nc NOISECOVERAGE] [-mem] [-D, --Debug] 
 ```  
   
 | Parameter | Function |  Default | |
@@ -49,11 +49,13 @@ maskToSatMap.exe [layers] [mask] [-o, --output OUTPUT] [-wd, --workdrive WORKDRI
 | -o, --output | path and filename of output file | ./sat_map.tiff |  |
 | -wd, --workdrive |  drive letter of Arma3 workdrive | P:\ |  |
 | -rgbv, --rgbvariation |  set rgb variation | 0 0 0 | * |
+| -lumv, --lumvariation | set luminance variation | 0 | * |
 | -nc, --noisecoverage |  noise coverage fraction | 0.0 |  * |
+| -mem, --memory-saver | conserve memory if possible, recommended for large maps | | |
 | -D, --Debug |  enables verbose output |  |   |
 
 
-\* can only be used in conjunction, be aware that even with the use of multithreading, the noise generation can take a lot of time depending on your map size. Roughly 30s for 8k\*8k, 15min for 30k\*30k.
+\* can only be used in conjunction, be aware that even with the use of multithreading, the noise generation can take a lot of time depending on your map size. Only one noise type can be used (rgbv or lumv).
 
 Example:
 ```sh
@@ -61,6 +63,9 @@ maskToSatMap.exe "layers.cfg" "Mask\mask_underground.tiff"
 ```
 ```sh
 maskToSatMap.exe "layers.cfg" "Mask\mask_underground.tiff" -o "Sat\sat_map.tiff" -rgbv 5 5 5 -nc 0.90
+```
+```sh
+maskToSatMap.exe "layers.cfg" "Mask\mask_underground.tiff" -o "Sat\sat_map.tiff" -lumv 5 -nc 0.90 -mem
 ```
 
 Please note:  
@@ -71,7 +76,7 @@ If the average value of any texture happens to be pink, then the program will in
 # Build
 
 ```
-pip install pyinstaller, numpy, numba, Pillow
+pip install pyinstaller numpy numba Pillow opencv-python
 pyinstaller maskToSatMap.py -F
 ```
 
