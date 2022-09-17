@@ -14,24 +14,31 @@
 #     You should have received a copy of the GNU General Public License
 #     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+
 from __future__ import annotations
 import re
 import argparse
 import sys
 import time
+import shutil
 from dataclasses import dataclass
 import logging
+from tempfile import TemporaryDirectory
 
 from pathlib import Path
 from typing import Dict
 import numpy as np
 import numba as nb
 from PIL import Image
+import cv2
 Image.MAX_IMAGE_PIXELS = None
 
 WORKDRIVE = Path("P:\\")
 
 ERRORCOLOR = 255, 0, 255
+
+MEMMAP = True
+TEMPDIR = None
 
 ERRORCOLOR_32 = (ERRORCOLOR[0] << 16) + (ERRORCOLOR[1] << 8) + ERRORCOLOR[2]
 
@@ -106,18 +113,29 @@ def replace_mask_color(mask_path, surfaces: Dict[str, Surface]):
     """replaces the mask colors with the average colors of the corresponding texture as defined in layers.cfg"""
     
     # load mask
-    try:
-        img = Image.open(mask_path).convert("RGB")
-    except Image.DecompressionBombError:
-        logging.error("The mask file is too large, try using the -is parameter with your total pixel count.")
-    logging.info(f"Mask loaded {img.size}px")
-    mask = np.array(img)
-    del img
+    # try:
+    #     img = Image.open(mask_path).convert("RGB")
+    # except Image.DecompressionBombError:
+    #     logging.error("The mask file is too large.")
+    # logging.info(f"Mask loaded {img.size}px")
+    # mask = np.array(img)
+    # del img
+    mask = cv2.imread(str(mask_path)).squeeze()
+    logging.info(f"Mask loaded {mask.shape[:2]}px")
 
     # convert rgb tuple into 32 bit int 0x00RRGGBB, by shifting and adding via dot product
     logging.info("Processing mask")
-    mask_32 = mask.dot(np.array([0x10000, 0x100, 0x1], dtype=np.int32))
+    # st = time.time()
+    # mask_32 = mask.dot(np.array([0x10000, 0x100, 0x1], dtype=np.uint32))
+    # logging.info(f"\tElapsed {time.time() - st:.2f} s")
 
+    st = time.time()
+    if MEMMAP:
+        mask_32 = np.memmap(TEMPDIR.name  + "/temp_mask.dat", mode="w+", dtype=np.uint32, shape=mask.shape[:2])
+    else:
+        mask_32 = np.empty(mask.shape[:2], dtype=np.uint32)
+    mask.dot(np.array([0x1, 0x100, 0x10000], dtype=np.uint32), out=mask_32)
+    logging.info(f"\tElapsed {time.time() - st:.2f} s")
     del mask
 
     # get color map from loaded layers.cfg and contained textures average colors, maps int32 colors (index) to RGB tuples from paa files
@@ -126,7 +144,11 @@ def replace_mask_color(mask_path, surfaces: Dict[str, Surface]):
 
     # apply new lookup table to index array to get new sat image
     logging.info("Creating sat map")
-    sat_map = color_map[mask_32]
+    if MEMMAP:
+        sat_map = np.memmap(TEMPDIR.name  + "/temp_satmap.dat", mode="w+", dtype=np.uint8, shape=(*mask_32.shape, 3))
+    else:
+        sat_map = np.empty(dtype=np.uint8, shape=(*mask_32.shape, 3))
+    sat_map[:] = color_map[mask_32]
 
     # check for missing textures, 0xFF00FF (pink) is default value of color map
     color_map_32: np.ndarray = color_map.dot(np.array([0x10000, 0x100, 0x1], dtype=np.int32))
@@ -191,8 +213,11 @@ def load_average_colors(surfaces: dict[str, Surface]):
         logging.debug(surf)
     return surfaces
 
-def noise_generation(sat_map, rgb_variation, noise_coverage):
+def rgb_noise_generation(sat_map, rgb_variation, noise_coverage):
     """generates a noise for a given threshold and a given pixel variation range"""
+    if not isinstance(rgb_variation, list[int]) and not len(rgb_variation) == 3:  
+        logging.error(f"Color variation wrong datatype. Must be list of 3 ints!")
+        return sat_map
     # checking inputs
     if noise_coverage == 0:
         logging.info(f"Skipping noise generation - The rgb threshold was set to 0 or not given")
@@ -201,15 +226,63 @@ def noise_generation(sat_map, rgb_variation, noise_coverage):
         logging.info(f"Skipping noise generation - The rgb variation was set to 0,0,0 or not given")
         return sat_map
 
-    # rand = ((np.random.rand(*sat_map.shape) - 0.5) * rgb_variation * (np.random.random()<noise_coverage)).astype(np.int8) # uniform distribution
-    # rand = (np.random.randn(*sat_map.shape) * rgb_variation).astype(np.int8) # gaussian distribution
-    # replacing pixels
-    # sat_map =  np.clip(sat_map + rand, a_min=0, a_max=255).astype(np.uint8)
-    sat_map = vec_noise(sat_map, np.array(rgb_variation).astype(np.float64), noise_coverage)
+    # calculating coverage mask
+    thresh = (np.random.randint(0,100,size=sat_map.shape[0:2]) > (noise_coverage*100))
+
+    high = np.array(rgb_variation).reshape(1,1,3)
+    low = high*-1
+    rng = np.random.default_rng()
+
+    if MEMMAP:
+        rand = np.memmap(TEMPDIR.name + "/rand.dat", mode="w+", dtype=np.int8, shape=sat_map.shape)
+    else:
+        rand = np.empty(dtype=np.int8, shape=sat_map.shape)
+    rand[:] = rng.integers(low, high, size=sat_map.shape, endpoint=True, dtype=np.int8)
+    # masking noise
+    rand[thresh] = np.array([0,0,0])
+    sat_map[:] =  np.clip(sat_map + rand, a_min=0, a_max=255).astype(np.uint8)
+
+    # logging.info("Numba vectorized function. Slow, memory efficient")
+    # strt = time.time()
+    # sat_map = vec_rgb_noise(sat_map, np.array(rgb_variation).astype(np.float64), noise_coverage)
+    # logging.info(f"\tElapsed {time.time() - strt:.2f} s")
+    
     return sat_map
 
-@nb.guvectorize(["void(uint8[:], float64[:], float64, uint8[:])"], "(n),(n),() -> (n)" ,target="parallel")
-def vec_noise(rgb, variation, threshold, out):
+    
+def lum_noise_generation(sat_map, lum_variation, noise_coverage):
+    """generates a noise for a given threshold and a given pixel variation range"""
+    # checking inputs
+    if not isinstance(lum_variation,int):  
+        logging.error(f"Luminance variation wrong datatype. Must be int!")
+        return sat_map
+    if noise_coverage == 0:
+        logging.info(f"Skipping noise generation - The noise coverage was set to 0 or not given")
+        return sat_map
+    elif lum_variation == 0:
+        logging.info(f"Skipping noise generation - The luminance variation was set to 0 or not given")
+        return sat_map
+
+    # calculating coverage mask
+    thresh = (np.random.randint(0,100,size=sat_map.shape[0:2]) > (noise_coverage*100))
+
+    high = lum_variation
+    low = high*-1
+    rng = np.random.default_rng()
+
+    if MEMMAP:
+        rand = np.memmap(TEMPDIR.name + "/rand.dat", mode="w+", dtype=np.int8, shape=(*sat_map.shape[:2],1))
+    else:
+        rand = np.empty(dtype=np.int8, shape=(*sat_map.shape[:2],1))
+    rand[:] = rng.integers(low, high, size=(*sat_map.shape[:2],1), endpoint=True, dtype=np.int8)
+    # masking noise
+    rand[thresh] = 0
+    sat_map[:] =  np.clip(sat_map + rand, a_min=0, a_max=255).astype(np.uint8)
+    
+    return sat_map
+
+@nb.guvectorize(["void(uint8[:], float64[:], float64, uint8[:])"], "(n),(n),() -> (n)", target="parallel", cache=True)
+def vec_rgb_noise(rgb, variation, threshold, out):
     if threshold > np.random.random():
         rand = ((np.random.rand(3) - 0.5) * variation).astype(np.int8)
     else:
@@ -217,14 +290,28 @@ def vec_noise(rgb, variation, threshold, out):
     # rr, rg, rb = rng.integers(rgb - variation, rgb + variation)
     out[:] = np.clip(rgb + rand, a_min=0, a_max=255).astype(np.uint8)
 
+# @nb.guvectorize(["void(uint8[:], uint8, float64, uint8[:])"], "(n),(),() -> (n)" ,target="parallel")
+# def vec_lum_noise(rgb, variation, threshold, out):
+#     if threshold > np.random.random():
+#         rand = np.random.randint(-variation, variation)
+#         out[:] = np.clip(rgb + rand, a_min=0, a_max=255).astype(np.uint8)
+#     else:
+#         out[:] = rgb
+    # rr, rg, rb = rng.integers(rgb - variation, rgb + variation)
+   
+
 def export_map(sat_map, target_path):
     # export
     logging.info(f"Exporting sat map to {target_path}")
-    Image.fromarray(sat_map).save(target_path)#, compression="lzma")
+    Image.fromarray(sat_map).save(target_path, compression="tiff_adobe_deflate") #tiff_adobe_deflate
 
-def start(layers, mask, output, rgb_variation, noise_coverage):
+def start(layers, mask, output, variation, noise_coverage, luminance_noise):
+    global MEMMAP, TEMPDIR
     logging.info("Starting ...")
     strt = time.time()
+    if MEMMAP:
+        logging.info("Creating tempdir")
+        TEMPDIR = TemporaryDirectory(prefix="satmapconv_", ignore_cleanup_errors=False)
     logging.info("Reading layers.cfg")
     surfaces = read_layers_cfg(layers)
     logging.info("Loading average colors from textures")
@@ -234,10 +321,20 @@ def start(layers, mask, output, rgb_variation, noise_coverage):
     sat_map = replace_mask_color(mask, surfaces)
     logging.info(f"\tElapsed {time.time() - strt:.2f} s")
     logging.info("Starting sat map noise generation")
-    sat_map = noise_generation(sat_map, rgb_variation, noise_coverage)
+
+    if luminance_noise:
+        sat_map = lum_noise_generation(sat_map, variation, noise_coverage)
+    else:
+        sat_map = rgb_noise_generation(sat_map, rgb_variation, noise_coverage)
+
     logging.info(f"\tElapsed {time.time() - strt:.2f} s")
     logging.info("Saving sat map")
     export_map(sat_map ,output)
+    del sat_map
+    
+    if MEMMAP:
+        shutil.rmtree(TEMPDIR.name)
+        # TEMPDIR.cleanup()
     logging.info("... Done")
     return
 
@@ -256,7 +353,9 @@ if __name__ == '__main__':
     parser.add_argument("-wd", "--workdrive", type=str, default="P:\\", help="drive letter of the Arma3 tools work drive")
     parser.add_argument("-o", "--output", type=str, default="./sat_img.tiff", help="path of the resulting sat view image file")
     parser.add_argument("-rgbv", "--rgbvariation", type=int, default=0, nargs=3, help="slight variation of the average ground texture color in +/- color range")
+    parser.add_argument("-lumv", "--lumvariation", type=int, default=0, nargs=1, help="slight variation of the average ground texture brightness in +/- range")
     parser.add_argument("-nc", "--noisecoverage", type=float, default=0.0, help="percentage of overall rgb variation")
+    parser.add_argument("-mem", "--memory-saver", help="conserve memory by storing arrays on disk, recommended for large maps", action="store_true")
     parser.add_argument("-D","--Debug", action="store_true", help="increases verbosity")
 
     args = parser.parse_args()
@@ -266,9 +365,14 @@ if __name__ == '__main__':
     out_path = Path(args.output)
     
     noise_coverage = args.noisecoverage
+
     rgb_variation = args.rgbvariation
     if rgb_variation == 0:
         rgb_variation = [0,0,0]
+
+    lum_variation = args.lumvariation[0]
+
+    assert args.rgbvariation != [0,0,0] and args.lumvariation !=0, "Can only use one type of variation, rgbv OR lumv!"
     
     assert layers_path.exists(), f"Layers file {args.layers} does not exist"
     assert mask_path.exists(),   f"Mask file {args.mask} does not exist"
@@ -278,12 +382,19 @@ if __name__ == '__main__':
         logger.setLevel(logging.DEBUG)
     else:
         logger.setLevel(logging.INFO)
+
+    if args.memory_saver:
+        MEMMAP = True
+    else:
+        MEMMAP = False
+
     if args.workdrive: 
         drv = Path(args.workdrive)
         assert drv.exists(), "invalid workdrive"
         WORKDRIVE = drv
     
-    
-
-    start(layers_path, mask_path, out_path, rgb_variation, noise_coverage)
+    if lum_variation:
+        start(layers_path, mask_path, out_path, lum_variation, noise_coverage, True)
+    else:
+        start(layers_path, mask_path, out_path, rgb_variation, noise_coverage, False)
     

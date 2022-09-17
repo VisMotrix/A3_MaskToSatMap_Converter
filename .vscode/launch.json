@@ -13,7 +13,17 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args": ["P:\\cytech\\Cytech_Underground_Map\\Cytech_Underground_Terrain\\source\\Images\\layers.cfg", "P:\\cytech\\Cytech_Underground_Map\\Cytech_Underground_Terrain\\source\\Images\\Mask\\mask_underground.tiff", "-rgbv", "10", "10", "10", "-rgbt", "0.5"]
+            "args": ["P:\\cytech\\Cytech_Underground_Map\\Cytech_Underground_Terrain\\source\\Images\\layers.cfg", "a3_SourceData\\mask_underground.tiff", "-rgbv", "10", "10", "10", "-nc", "0.5"]
+            // "P:\cytech\Cytech_Underground_Map\Cytech_Underground_Terrain\source\Images\layers.cfg" "P:\cytech\Cytech_Aboveground_Map\Cytech_Aboveground_Terrain\Source\Images\Mask\mask_aboveground.tif" -rgbv 10 10 10 -rgbt 0.5
+        },
+        {
+            "name": "Python: params lum",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": ["P:\\cytech\\Cytech_Underground_Map\\Cytech_Underground_Terrain\\source\\Images\\layers.cfg", "a3_SourceData\\mask_underground.tiff", "-lumv", "10", "-nc", "0.5"]
             // "P:\cytech\Cytech_Underground_Map\Cytech_Underground_Terrain\source\Images\layers.cfg" "P:\cytech\Cytech_Aboveground_Map\Cytech_Aboveground_Terrain\Source\Images\Mask\mask_aboveground.tif" -rgbv 10 10 10 -rgbt 0.5
         }
     ]

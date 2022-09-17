@@ -7,6 +7,8 @@ A Arma 3 Mask To SatMap Converter by Atom_Monky & ExXeptional
 - [Info](#info)
 - [Images](#images)
 - [Usage](#usage)
+- [quick cmd example for the mask to satMap generator:](#quick-cmd-example-for-the-mask-to-satmap-generator)
+- [Options explained:](#options-explained)
 - [Build](#build)
 - [Contribute](#contribute)
 
@@ -30,9 +32,7 @@ In that way we can use the mask and the ground texture to generate a nice satmap
 
 <img src="imgs\noise_generation_1.png" alt="drawing" style="max-width:80%; text-align: center;"/>
 </details>  
-
-Surface and Satmap texture blends pretty good
-  
+...</br></br>
 
 # Usage
 
@@ -49,7 +49,9 @@ maskToSatMap.exe [layers] [mask] [-o, --output OUTPUT] [-wd, --workdrive WORKDRI
 | -o, --output | path and filename of output file | ./sat_map.tiff |  |
 | -wd, --workdrive |  drive letter of Arma3 workdrive | P:\ |  |
 | -rgbv, --rgbvariation |  set rgb variation | 0 0 0 | * |
+| -lumv, --lumvariation |  set lum variation | 0 | * |
 | -nc, --noisecoverage |  noise coverage fraction | 0.0 |  * |
+| -mem |  Use Hard disk if RAM is exceeded |  |  |
 | -D, --Debug |  enables verbose output |  |   |
 
 
@@ -65,8 +67,34 @@ maskToSatMap.exe "layers.cfg" "Mask\mask_underground.tiff" -o "Sat\sat_map.tiff"
 
 Please note:  
 If there are missing textures, the areas will show as pink (#FF00FF) on the sat map. Our program checks for any pink pixels after sat map creation and prints an error if it finds any.
-If the average value of any texture happens to be pink, then the program will interpret this as error. In this case please disregard.
+If the average value of any texture happens to be pink, then the program will interpret this as error. In this case please disregard. You can only use -rgbv or -lumv as noise generation
 
+<details>
+<summary style="font-size:11pt">More examples</summary>
+
+# quick cmd example for the mask to satMap generator:
+- download latest release from git
+- open cmd
+- navigate to masToSatMap.exe folder
+- runn: maskToSatMap.exe "P:\PATH\TO\Layers.cfg" "P:\PATH\TO\mask.tif" -lumv 4 -nc 0.5 -mem
+- ( "-" arguments are optional )
+
+# Options explained:
+usage: </br>
+` maskToSatMap.py layers mask [-h] [-wd WORKDRIVE] [-o OUTPUT] [-rgbv RGBVARIATION RGBVARIATION RGBVARIATION] [-lumv LUMVARIATION] [-nc NOISECOVERAGE] [-mem] [-D] `
+
+| Parameter | Meaning | Example | Optional |
+| --------- | ------- | ------- | -------- |
+| layers | path to layers.cfg file | "P:\cytech\Cytech_Aboveground_Map\Cytech_Aboveground_Terrain\Source\Images\Layers.cfg"  | |
+| mask | path to terrain mask image file | "P:\cytech\Cytech_Aboveground_Map\Cytech_Aboveground_Terrain\Source\Images\Mask\mask_aboveground.tif"  | |
+| -wd, --workdrive |  drive letter of Arma3 workdrive | -wd "P:\\" | X |
+| -o, --output | path and filename of output file | -o "./sat_map.tiff" | X |
+| -rgbv, --rgbvariation |  set rgb variation | -rgbv 3 3 3 | X |
+| -nc, --noisecoverage |  noise coverage fraction | -nc 0.5 | X | 
+| -mem | Use Hard disk if RAM is exceeded | -mem | X |
+| -D, --Debug |  enables verbose output | -D | X |
+</details>
+...</br></br>
 
 # Build
 
