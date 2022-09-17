@@ -28,7 +28,6 @@ from tempfile import TemporaryDirectory
 from pathlib import Path
 from typing import Dict
 import numpy as np
-import numba as nb
 from PIL import Image
 import cv2
 Image.MAX_IMAGE_PIXELS = None
@@ -281,14 +280,14 @@ def lum_noise_generation(sat_map, lum_variation, noise_coverage):
     
     return sat_map
 
-@nb.guvectorize(["void(uint8[:], float64[:], float64, uint8[:])"], "(n),(n),() -> (n)", target="parallel", cache=True)
-def vec_rgb_noise(rgb, variation, threshold, out):
-    if threshold > np.random.random():
-        rand = ((np.random.rand(3) - 0.5) * variation).astype(np.int8)
-    else:
-        rand = np.zeros(rgb.shape, dtype=np.int8)
-    # rr, rg, rb = rng.integers(rgb - variation, rgb + variation)
-    out[:] = np.clip(rgb + rand, a_min=0, a_max=255).astype(np.uint8)
+# @nb.guvectorize(["void(uint8[:], float64[:], float64, uint8[:])"], "(n),(n),() -> (n)", target="parallel", cache=True)
+# def vec_rgb_noise(rgb, variation, threshold, out):
+#     if threshold > np.random.random():
+#         rand = ((np.random.rand(3) - 0.5) * variation).astype(np.int8)
+#     else:
+#         rand = np.zeros(rgb.shape, dtype=np.int8)
+#     # rr, rg, rb = rng.integers(rgb - variation, rgb + variation)
+#     out[:] = np.clip(rgb + rand, a_min=0, a_max=255).astype(np.uint8)
 
 # @nb.guvectorize(["void(uint8[:], uint8, float64, uint8[:])"], "(n),(),() -> (n)" ,target="parallel")
 # def vec_lum_noise(rgb, variation, threshold, out):
@@ -353,7 +352,7 @@ if __name__ == '__main__':
     parser.add_argument("-wd", "--workdrive", type=str, default="P:\\", help="drive letter of the Arma3 tools work drive")
     parser.add_argument("-o", "--output", type=str, default="./sat_img.tiff", help="path of the resulting sat view image file")
     parser.add_argument("-rgbv", "--rgbvariation", type=int, default=0, nargs=3, help="slight variation of the average ground texture color in +/- color range")
-    parser.add_argument("-lumv", "--lumvariation", type=int, default=0, nargs=1, help="slight variation of the average ground texture brightness in +/- range")
+    parser.add_argument("-lumv", "--lumvariation", type=int, default=0, help="slight variation of the average ground texture brightness in +/- range")
     parser.add_argument("-nc", "--noisecoverage", type=float, default=0.0, help="percentage of overall rgb variation")
     parser.add_argument("-mem", "--memory-saver", help="conserve memory by storing arrays on disk, recommended for large maps", action="store_true")
     parser.add_argument("-D","--Debug", action="store_true", help="increases verbosity")
@@ -370,7 +369,7 @@ if __name__ == '__main__':
     if rgb_variation == 0:
         rgb_variation = [0,0,0]
 
-    lum_variation = args.lumvariation[0]
+    lum_variation = args.lumvariation
 
     assert args.rgbvariation != [0,0,0] and args.lumvariation !=0, "Can only use one type of variation, rgbv OR lumv!"
     
