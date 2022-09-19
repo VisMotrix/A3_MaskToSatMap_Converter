@@ -134,7 +134,7 @@ def replace_mask_color(mask_path, surfaces: Dict[str, Surface]):
 
     st = time.time()
 
-    mask_32 = mask.dot(np.array([0x1, 0x100, 0x10000], dtype=np.uint32))
+    mask_32 = mask.dot(np.array([0x1, 0x100, 0x10000], dtype=np.uint32)).compute()
     logging.info(f"\tElapsed {time.time() - st:.2f} s")
     del mask
 
@@ -145,7 +145,7 @@ def replace_mask_color(mask_path, surfaces: Dict[str, Surface]):
     # apply new lookup table to index array to get new sat image
     logging.info("Creating sat map")
 
-    sat_map = da.from_array(color_map[mask_32.compute()])#
+    sat_map = da.from_array(color_map[mask_32])#
 
     # check for missing textures, 0xFF00FF (pink) is default value of color map
     logging.info("Check for missing textures")
@@ -156,7 +156,7 @@ def replace_mask_color(mask_path, surfaces: Dict[str, Surface]):
 
     # check colors used
     logging.info("Check for mismatched colors")
-    used_colors = da.unique(mask_32).compute()
+    used_colors = np.unique(mask_32)
     logging.debug(f"Mask colors: " + ', '.join('{:06X}'.format(a) for a in used_colors))
     # check for unused textures
     for col in used_colors:
@@ -289,7 +289,7 @@ def export_map(sat_map: da, target_path):
     # export
     logging.info(f"Exporting sat map to {target_path}")
     # Image.fromarray(sat_map.compute()).save(target_path, compression="tiff_adobe_deflate") #tiff_adobe_deflate
-    sat_map = da.flip(sat_map,2)
+    sat_map = da.flip(sat_map,2).compute()
     cv2.imwrite(str(target_path), sat_map, params=(cv2.IMWRITE_TIFF_COMPRESSION, 32946))
 
 def start(layers, mask, output, variation, noise_coverage, luminance_noise):
