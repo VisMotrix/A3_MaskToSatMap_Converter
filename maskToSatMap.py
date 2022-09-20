@@ -58,7 +58,7 @@ def get_mask_avg_col_map(surfaces: list[Surface]):
     nmap={}
     for surf in surfaces:
         col_map[surf.mask_color] = surf.avg_color
-        logging.debug(f"Mapping {surf.mask_color:06X} to {surf.avg_color}")
+        logger.debug(f"Mapping {surf.mask_color:06X} to {surf.avg_color}")
         nmap[surf.mask_color] = surf.name
     return col_map, nmap
 
@@ -84,11 +84,11 @@ def read_layers_cfg(path):
 
         # check if color already loaded
         if color_32 in mask_colors:
-            logging.error(f"Duplicate mask color entry in layers.cfg: {name} - {(r,g,b)}. Entry ignored!")
+            logger.error(f"Duplicate mask color entry in layers.cfg: {name} - {(r,g,b)}. Entry ignored!")
             continue
 
         if name in surfaces.keys():
-            logging.error(f"Duplicate texture entry in layers.cfg: {name}. Entry ignored!")
+            logger.error(f"Duplicate texture entry in layers.cfg: {name}. Entry ignored!")
             continue
 
         mask_colors.append(color_32)        
@@ -101,11 +101,11 @@ def read_layers_cfg(path):
         if matches:
             surfaces[key].path = matches[0].replace(";", "").replace('"', "")
         else:
-            logging.error(f"No material file path found for texture entry in layers.cfg: {key}.")
+            logger.error(f"No material file path found for texture entry in layers.cfg: {key}.")
 
     
-    logging.debug("layers.cfg read")
-    logging.debug (surfaces)
+    logger.debug("layers.cfg read")
+    logger.debug (surfaces)
     return surfaces
 
 def replace_mask_color(mask_path, surfaces: Dict[str, Surface]):
@@ -115,18 +115,18 @@ def replace_mask_color(mask_path, surfaces: Dict[str, Surface]):
     # try:
     #     img = Image.open(mask_path).convert("RGB")
     # except Image.DecompressionBombError:
-    #     logging.error("The mask file is too large.")
-    # logging.info(f"Mask loaded {img.size}px")
+    #     logger.error("The mask file is too large.")
+    # logger.info(f"Mask loaded {img.size}px")
     # mask = np.array(img)
     # del img
     mask = cv2.imread(str(mask_path)).squeeze()
-    logging.info(f"Mask loaded {mask.shape[:2]}px")
+    logger.info(f"Mask loaded {mask.shape[:2]}px")
 
     # convert rgb tuple into 32 bit int 0x00RRGGBB, by shifting and adding via dot product
-    logging.info("Processing mask")
+    logger.info("Processing mask")
     # st = time.time()
     # mask_32 = mask.dot(np.array([0x10000, 0x100, 0x1], dtype=np.uint32))
-    # logging.info(f"\tElapsed {time.time() - st:.2f} s")
+    # logger.info(f"\tElapsed {time.time() - st:.2f} s")
 
     st = time.time()
     if MEMMAP:
@@ -134,15 +134,15 @@ def replace_mask_color(mask_path, surfaces: Dict[str, Surface]):
     else:
         mask_32 = np.empty(mask.shape[:2], dtype=np.uint32)
     mask.dot(np.array([0x1, 0x100, 0x10000], dtype=np.uint32), out=mask_32)
-    logging.info(f"\tElapsed {time.time() - st:.2f} s")
+    logger.info(f"\tElapsed {time.time() - st:.2f} s")
     del mask
 
     # get color map from loaded layers.cfg and contained textures average colors, maps int32 colors (index) to RGB tuples from paa files
-    logging.info("Building colormap from textures")
+    logger.info("Building colormap from textures")
     color_map, name_map = get_mask_avg_col_map(surfaces.values())
 
     # apply new lookup table to index array to get new sat image
-    logging.info("Creating sat map")
+    logger.info("Creating sat map")
     if MEMMAP:
         sat_map = np.memmap(TEMPDIR.name  + "/temp_satmap.dat", mode="w+", dtype=np.uint8, shape=(*mask_32.shape, 3))
     else:
@@ -153,16 +153,16 @@ def replace_mask_color(mask_path, surfaces: Dict[str, Surface]):
     color_map_32: np.ndarray = color_map.dot(np.array([0x10000, 0x100, 0x1], dtype=np.int32))
     error_pixels_cnt = np.count_nonzero(color_map_32[mask_32] == ERRORCOLOR_32)
     if error_pixels_cnt:
-        logging.warning(f"There is missing texture information. Areas will show as pink on sat map. Total pixel errors: {error_pixels_cnt}")
+        logger.warning(f"There is missing texture information. Areas will show as pink on sat map. Total pixel errors: {error_pixels_cnt}")
 
     # check colors used
     used_colors = np.unique(mask_32)
-    logging.debug(f"Mask colors: " + ', '.join('{:06X}'.format(a) for a in used_colors))
+    logger.debug(f"Mask colors: " + ', '.join('{:06X}'.format(a) for a in used_colors))
     # check for unused textures
     for col in used_colors:
         name_map.pop(col, "")
     if name_map:
-        logging.warning("Unused textures: " + ", ".join(name_map.values()))
+        logger.warning("Unused textures: " + ", ".join(name_map.values()))
 
     return sat_map
 
@@ -185,44 +185,44 @@ def get_paa_avg_col(path):
 
     paa_path = find_paa_path(path)
     if not paa_path: 
-        logging.error(f"Cannot extract paa path from rvmat file {path}")
+        logger.error(f"Cannot extract paa path from rvmat file {path}")
         return ERRORCOLOR
 
     try:
         data = np.memmap(paa_path, dtype=np.uint8)
     except FileNotFoundError:
-        logging.error(f"Cannot open paa file {paa_path}")
+        logger.error(f"Cannot open paa file {paa_path}")
         return ERRORCOLOR
 
     if not(data[1] == 0xFF and data[0] == 0x01): 
-        logging.error(f"Not DXT1 format {paa_path}")
+        logger.error(f"Not DXT1 format {paa_path}")
         return ERRORCOLOR # dxt1 file?
 
     avg_b, avg_g, avg_r  = data[0x0e:0x11] # bgr
-    logging.debug(f"Avg color for {paa_path}: {avg_r, avg_g, avg_b}")
+    logger.debug(f"Avg color for {paa_path}: {avg_r, avg_g, avg_b}")
     return avg_r, avg_g, avg_b
 
 def load_average_colors(surfaces: dict[str, Surface]):
     for surf in surfaces.values():
         if not surf.path:
-            logging.error(f"Texture {surf.name} has no material path.")
+            logger.error(f"Texture {surf.name} has no material path.")
             continue
         # calculate average color from texture stored in surface
         surf.avg_color = get_paa_avg_col(surf.path)
-        logging.debug(surf)
+        logger.debug(surf)
     return surfaces
 
 def rgb_noise_generation(sat_map, rgb_variation, noise_coverage):
     """generates a noise for a given threshold and a given pixel variation range"""
     if not isinstance(rgb_variation, list[int]) and not len(rgb_variation) == 3:  
-        logging.error(f"Color variation wrong datatype. Must be list of 3 ints!")
+        logger.error(f"Color variation wrong datatype. Must be list of 3 ints!")
         return sat_map
     # checking inputs
     if noise_coverage == 0:
-        logging.info(f"Skipping noise generation - The rgb threshold was set to 0 or not given")
+        logger.info(f"Skipping noise generation - The rgb threshold was set to 0 or not given")
         return sat_map
     elif sum(rgb_variation) == 0:
-        logging.info(f"Skipping noise generation - The rgb variation was set to 0,0,0 or not given")
+        logger.info(f"Skipping noise generation - The rgb variation was set to 0,0,0 or not given")
         return sat_map
 
     # calculating coverage mask
@@ -241,10 +241,10 @@ def rgb_noise_generation(sat_map, rgb_variation, noise_coverage):
     rand[thresh] = np.array([0,0,0])
     sat_map[:] =  np.clip(sat_map + rand, a_min=0, a_max=255).astype(np.uint8)
 
-    # logging.info("Numba vectorized function. Slow, memory efficient")
+    # logger.info("Numba vectorized function. Slow, memory efficient")
     # strt = time.time()
     # sat_map = vec_rgb_noise(sat_map, np.array(rgb_variation).astype(np.float64), noise_coverage)
-    # logging.info(f"\tElapsed {time.time() - strt:.2f} s")
+    # logger.info(f"\tElapsed {time.time() - strt:.2f} s")
     
     return sat_map
 
@@ -253,13 +253,13 @@ def lum_noise_generation(sat_map, lum_variation, noise_coverage):
     """generates a noise for a given threshold and a given pixel variation range"""
     # checking inputs
     if not isinstance(lum_variation,int):  
-        logging.error(f"Luminance variation wrong datatype. Must be int!")
+        logger.error(f"Luminance variation wrong datatype. Must be int!")
         return sat_map
     if noise_coverage == 0:
-        logging.info(f"Skipping noise generation - The noise coverage was set to 0 or not given")
+        logger.info(f"Skipping noise generation - The noise coverage was set to 0 or not given")
         return sat_map
     elif lum_variation == 0:
-        logging.info(f"Skipping noise generation - The luminance variation was set to 0 or not given")
+        logger.info(f"Skipping noise generation - The luminance variation was set to 0 or not given")
         return sat_map
 
     # calculating coverage mask
@@ -301,45 +301,45 @@ def lum_noise_generation(sat_map, lum_variation, noise_coverage):
 
 def export_map(sat_map, target_path):
     # export
-    logging.info(f"Exporting sat map to {target_path}")
+    logger.info(f"Exporting sat map to {target_path}")
     Image.fromarray(sat_map).save(target_path, compression="tiff_adobe_deflate") #tiff_adobe_deflate
 
 def start(layers, mask, output, variation, noise_coverage, luminance_noise):
     global MEMMAP, TEMPDIR
-    logging.info("Starting ...")
+    logger.info("Starting ...")
     strt = time.time()
     if MEMMAP:
-        logging.info("Creating tempdir")
+        logger.info("Creating tempdir")
         TEMPDIR = TemporaryDirectory(prefix="satmapconv_", ignore_cleanup_errors=False)
-    logging.info("Reading layers.cfg")
+    logger.info("Reading layers.cfg")
     surfaces = read_layers_cfg(layers)
-    logging.info("Loading average colors from textures")
+    logger.info("Loading average colors from textures")
     surfaces = load_average_colors(surfaces)
-    logging.info(f"\tElapsed {time.time() - strt:.2f} s")
-    logging.info("Starting sat map generation")
+    logger.info(f"\tElapsed {time.time() - strt:.2f} s")
+    logger.info("Starting sat map generation")
     sat_map = replace_mask_color(mask, surfaces)
-    logging.info(f"\tElapsed {time.time() - strt:.2f} s")
-    logging.info("Starting sat map noise generation")
+    logger.info(f"\tElapsed {time.time() - strt:.2f} s")
+    logger.info("Starting sat map noise generation")
 
     if luminance_noise:
         sat_map = lum_noise_generation(sat_map, variation, noise_coverage)
     else:
         sat_map = rgb_noise_generation(sat_map, rgb_variation, noise_coverage)
 
-    logging.info(f"\tElapsed {time.time() - strt:.2f} s")
-    logging.info("Saving sat map")
+    logger.info(f"\tElapsed {time.time() - strt:.2f} s")
+    logger.info("Saving sat map")
     export_map(sat_map ,output)
     del sat_map
     
     if MEMMAP:
         shutil.rmtree(TEMPDIR.name)
         # TEMPDIR.cleanup()
-    logging.info("... Done")
+    logger.info("... Done")
     return
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    logger = logging.getLogger()
+    logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
     sh = logging.StreamHandler(sys.stdout)
     sh.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
