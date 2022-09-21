@@ -29,7 +29,7 @@ from pathlib import Path
 from typing import Dict
 import numpy as np
 from PIL import Image
-import cv2
+import tifffile
 import numba as nb
 Image.MAX_IMAGE_PIXELS = None
 
@@ -291,7 +291,7 @@ def load_image(path):
 def export_map(sat_map, target_path):
     # export
     logger.info(f"Exporting sat map to {target_path}")
-    Image.fromarray(sat_map).save(target_path, compression="tiff_adobe_deflate") #tiff_adobe_deflate
+    tifffile.imwrite(target_path, sat_map, compression="zlib", compressionargs={'level':5}, predictor=True, tile=(256,256))
 
 def start(layers, mask, output, variation, noise_coverage, luminance_noise):
     global MEMMAP, TEMPDIR
@@ -366,6 +366,7 @@ if __name__ == '__main__':
     assert layers_path.exists(), f"Layers file {args.layers} does not exist"
     assert mask_path.exists(),   f"Mask file {args.mask} does not exist"
 
+    assert out_path.suffix in [".tiff", ".tif"], f"Output file needs to end with .tiff or .tif"
 
     if args.Debug: 
         logger.setLevel(logging.DEBUG)
