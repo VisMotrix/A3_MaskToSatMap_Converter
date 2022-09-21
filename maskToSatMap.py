@@ -21,12 +21,13 @@ import argparse
 import sys
 import time
 import shutil
+
 from dataclasses import dataclass
 import logging
 from tempfile import TemporaryDirectory
-
 from pathlib import Path
 from typing import Dict
+
 import numpy as np
 from PIL import Image
 import tifffile
