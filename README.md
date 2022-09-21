@@ -1,7 +1,7 @@
 # A3_MaskToSatMap_Converter <!-- omit in toc -->
 [![License](https://img.shields.io/badge/license-GNU-v3.svg?style=flat)](https://www.gnu.org/licenses/gpl-3.0.txt)
 
-A Arma 3 Mask To SatMap Converter by Atom_Monky & ExXeptional
+A Arma 3 Mask To SatMap Converter by Atom_Monky & ExXec
 
 # Table of Contents <!-- omit in toc -->
 - [Info](#info)
