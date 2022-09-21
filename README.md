@@ -104,7 +104,7 @@ usage: </br>
 ```
 pip install pyinstaller 
 pip install -r requirements.txt
-pyinstaller maskToSatMap.py -F
+pyinstaller maskToSatMap.spec
 ```
 
 # Contribute
