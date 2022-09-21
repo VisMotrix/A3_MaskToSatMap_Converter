@@ -102,8 +102,9 @@ usage: </br>
 # Build
 
 ```
-pip install pyinstaller numpy numba Pillow opencv-python
-pyinstaller maskToSatMap.py -F
+pip install pyinstaller 
+pip install -r requirements.txt
+pyinstaller maskToSatMap.spec
 ```
 
 # Contribute
