@@ -102,7 +102,8 @@ usage: </br>
 # Build
 
 ```
-pip install pyinstaller numpy numba Pillow tifffile imagecodecs
+pip install pyinstaller 
+pip install -r requirements.txt
 pyinstaller maskToSatMap.py -F
 ```
 
