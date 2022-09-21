@@ -1,5 +1,6 @@
 /a3_SourceData/sat_img.tiff
-/build/*
+build
+dist
 sat_img.tiff
 .venv
 __pycache__
