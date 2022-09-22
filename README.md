@@ -32,13 +32,11 @@ In that way we can use the mask and the ground texture to generate a nice satmap
 
 <img src="imgs\noise_generation_1.png" alt="drawing" style="max-width:80%; text-align: center;"/>
 </details>  
-...</br></br>
+</br></br>
 
 # Usage
 
 ```sh
-python maskToSatMap.py [layers] [mask] [-o, --output OUTPUT] [-wd, --workdrive WORKDRIVE] [-rgbv R_VARIATION G_VARIATION B_VARIATION] [-nc NOISECOVERAGE] [-D, --Debug] 
-- OR -
 maskToSatMap.exe [layers] [mask] [-o, --output OUTPUT] [-wd, --workdrive WORKDRIVE] [-rgbv R_VARIATION G_VARIATION B_VARIATION] [-lumvv VARIATION] [-nc NOISECOVERAGE] [-mem] [-D, --Debug] 
 ```  
   
@@ -55,7 +53,7 @@ maskToSatMap.exe [layers] [mask] [-o, --output OUTPUT] [-wd, --workdrive WORKDRI
 | -D, --Debug |  enables verbose output |  |   |
 
 
-\* can only be used in conjunction, be aware that even with the use of multithreading, the noise generation can take a lot of time depending on your map size. Only one noise type can be used (rgbv or lumv).
+\* can only be used together, be aware that even with the use of multithreading, the noise generation can take a lot of time depending on your map size. Only one noise type can be used (rgbv or lumv).
 
 Example:
 ```sh
@@ -70,41 +68,21 @@ maskToSatMap.exe "layers.cfg" "Mask\mask_underground.tiff" -o "Sat\sat_map.tiff"
 
 Please note:  
 If there are missing textures, the areas will show as pink (#FF00FF) on the sat map. Our program checks for any pink pixels after sat map creation and prints an error if it finds any.
-If the average value of any texture happens to be pink, then the program will interpret this as error. In this case please disregard. You can only use -rgbv or -lumv as noise generation
+If the average value of any texture happens to be pink, then the program will interpret this as error. In this case please disregard.
 
-<details>
-<summary style="font-size:11pt">More examples</summary>
+# Build it yourself
 
-# quick cmd example for the mask to satMap generator:
-- download latest release from git
-- open cmd
-- navigate to masToSatMap.exe folder
-- runn: maskToSatMap.exe "P:\PATH\TO\Layers.cfg" "P:\PATH\TO\mask.tif" -lumv 4 -nc 0.5 -mem
-- ( "-" arguments are optional )
-
-# Options explained:
-usage: </br>
-` maskToSatMap.py layers mask [-h] [-wd WORKDRIVE] [-o OUTPUT] [-rgbv RGBVARIATION RGBVARIATION RGBVARIATION] [-lumv LUMVARIATION] [-nc NOISECOVERAGE] [-mem] [-D] `
-
-| Parameter | Meaning | Example | Optional |
-| --------- | ------- | ------- | -------- |
-| layers | path to layers.cfg file | "P:\cytech\Cytech_Aboveground_Map\Cytech_Aboveground_Terrain\Source\Images\Layers.cfg"  | |
-| mask | path to terrain mask image file | "P:\cytech\Cytech_Aboveground_Map\Cytech_Aboveground_Terrain\Source\Images\Mask\mask_aboveground.tif"  | |
-| -wd, --workdrive |  drive letter of Arma3 workdrive | -wd "P:\\" | X |
-| -o, --output | path and filename of output file | -o "./sat_map.tiff" | X |
-| -rgbv, --rgbvariation |  set rgb variation | -rgbv 3 3 3 | X |
-| -nc, --noisecoverage |  noise coverage fraction | -nc 0.5 | X | 
-| -mem | Use Hard disk if RAM is exceeded | -mem | X |
-| -D, --Debug |  enables verbose output | -D | X |
-</details>
-...</br></br>
-
-# Build
+Install python, version 3.10 recommended.
 
 ```
-pip install pyinstaller 
 pip install -r requirements.txt
+pip install pyinstaller 
 pyinstaller maskToSatMap.spec
+```
+
+Instead of building the exe, you can also directly call the python script with arguments
+```sh
+python maskToSatMap.py [layers] [mask] [-o, --output OUTPUT] [-wd, --workdrive WORKDRIVE] [-rgbv R_VARIATION G_VARIATION B_VARIATION] [-nc NOISECOVERAGE] [-D, --Debug] 
 ```
 
 # Contribute
