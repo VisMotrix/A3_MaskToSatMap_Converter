@@ -7,8 +7,8 @@ A Arma 3 Mask To SatMap Converter by Atom_Monky & ExXec
 - [Info](#info)
 - [Images](#images)
 - [Usage](#usage)
-- [quick cmd example for the mask to satMap generator:](#quick-cmd-example-for-the-mask-to-satmap-generator)
-- [Options explained:](#options-explained)
+    - [GUI version](#gui-version)
+    - [Command line version](#command-line-version)
 - [Build](#build)
 - [Contribute](#contribute)
 
@@ -35,6 +35,14 @@ In that way we can use the mask and the ground texture to generate a nice satmap
 </br></br>
 
 # Usage
+
+## GUI version
+
+Simply execute `maskToSatMapGUI.exe`
+
+---
+
+## Command line version
 
 ```sh
 maskToSatMap.exe [layers] [mask] [-o, --output OUTPUT] [-wd, --workdrive WORKDRIVE] [-rgbv R_VARIATION G_VARIATION B_VARIATION] [-lumvv VARIATION] [-nc NOISECOVERAGE] [-mem] [-D, --Debug] 
@@ -70,7 +78,7 @@ Please note:
 If there are missing textures, the areas will show as pink (#FF00FF) on the sat map. Our program checks for any pink pixels after sat map creation and prints an error if it finds any.
 If the average value of any texture happens to be pink, then the program will interpret this as error. In this case please disregard.
 
-# Build it yourself
+# Build
 
 Install python, version 3.10 recommended.
 
