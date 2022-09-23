@@ -82,6 +82,16 @@ If the average value of any texture happens to be pink, then the program will in
 
 Install python, version 3.10 recommended.
 
+## GUI version 
+
+```
+pip install -r requirements_gui.txt
+pip install pyinstaller 
+pyinstaller guiMain.spec
+```
+
+## Command line version
+
 ```
 pip install -r requirements.txt
 pip install pyinstaller 
