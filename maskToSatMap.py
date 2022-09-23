@@ -34,14 +34,8 @@ import tifffile
 import numba as nb
 Image.MAX_IMAGE_PIXELS = None
 
-WORKDRIVE = Path("P:\\")
+from globals import *
 
-ERRORCOLOR = 255, 0, 255
-
-MEMMAP = True
-TEMPDIR = None
-
-ERRORCOLOR_32 = (ERRORCOLOR[0] << 16) + (ERRORCOLOR[1] << 8) + ERRORCOLOR[2]
 
 @dataclass
 class Surface:
@@ -60,7 +54,7 @@ def get_mask_avg_col_map(surfaces: list[Surface]):
     nmap={}
     for surf in surfaces:
         col_map[surf.mask_color] = surf.avg_color
-        logger.debug(f"Mapping {surf.mask_color:06X} to {surf.avg_color}")
+        logger.debug(f"Mapping #{surf.mask_color:06X} to {surf.avg_color}")
         nmap[surf.mask_color] = surf.name
     return col_map, nmap
 
@@ -105,9 +99,7 @@ def read_layers_cfg(path):
         else:
             logger.error(f"No material file path found for texture entry in layers.cfg: {key}.")
 
-    
-    logger.debug("layers.cfg read")
-    logger.debug (surfaces)
+
     return surfaces
 
 def replace_mask_color(mask_path, surfaces: Dict[str, Surface]):
@@ -210,7 +202,6 @@ def load_average_colors(surfaces: dict[str, Surface]):
             continue
         # calculate average color from texture stored in surface
         surf.avg_color = get_paa_avg_col(surf.path)
-        logger.debug(surf)
     return surfaces
 
 def rgb_noise_generation(sat_map, rgb_variation, noise_coverage):
@@ -309,14 +300,15 @@ def start(layers, mask, output, variation, noise_coverage, luminance_noise):
     logger.info("Starting sat map generation")
     sat_map = replace_mask_color(mask, surfaces)
     logger.info(f"\tElapsed {time.time() - strt:.2f} s")
-    logger.info("Starting sat map noise generation")
 
-    if luminance_noise:
-        sat_map = lum_noise_generation(sat_map, variation, noise_coverage)
-    else:
-        sat_map = rgb_noise_generation(sat_map, rgb_variation, noise_coverage)
+    if variation and noise_coverage:
+        logger.info("Starting sat map noise generation")
+        if luminance_noise:
+            sat_map = lum_noise_generation(sat_map, variation, noise_coverage)
+        else:
+            sat_map = rgb_noise_generation(sat_map, rgb_variation, noise_coverage)
+        logger.info(f"\tElapsed {time.time() - strt:.2f} s")
 
-    logger.info(f"\tElapsed {time.time() - strt:.2f} s")
     logger.info("Saving sat map")
     export_map(sat_map ,output)
     del sat_map
@@ -328,14 +320,30 @@ def start(layers, mask, output, variation, noise_coverage, luminance_noise):
     logger.info(f"\tElapsed {time.time() - strt:.2f} s")
     return
 
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
+def initialize_logger(handlers=None):
+    global logger
+    logging.raiseExceptions = False
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
     sh = logging.StreamHandler(sys.stdout)
     sh.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
     sh.setLevel(logging.DEBUG)
     logger.addHandler(sh)
+
+    if handlers:
+        handlers.setLevel(logging.DEBUG)
+        formatter = logging.Formatter("%(levelname)s: %(message)s")
+        #handler.setFormatter(formatter)
+        logger.addHandler(handlers)
+
+    return logger
+
+
+
+# Press the green button in the gutter to run the script.
+if __name__ == '__main__':
+
+    logger = initialize_logger()
 
     parser = argparse.ArgumentParser()
     parser.add_argument("layers", type=str, help="path of the layers.cfg file")

@@ -12,7 +12,7 @@ block_cipher = None
 
 
 a = Analysis(
-    ['maskToSatMap.py'],
+    ['guiMain.py'],
     pathex=[],
     binaries=[],
     datas=[],
@@ -35,14 +35,14 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='maskToSatMap',
+    name='maskToSatMapGUI',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=True,
+    console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
