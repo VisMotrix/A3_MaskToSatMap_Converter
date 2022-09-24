@@ -274,7 +274,7 @@ def load_image(path):
     else:
         mask= np.empty(imshape, dtype=np.uint8)
 
-    mask[:] = np.array(img)
+    mask[:] = np.asarray(img)
     logger.debug(f"Loaded mask image in {time.time() - strt:.2f} s")
     # mask = cv2.imread(str(mask_path)).squeeze()
     logger.info(f"Mask loaded {mask.shape[:2]}px")
