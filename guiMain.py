@@ -90,7 +90,7 @@ class MainWindow(QMainWindow, Ui_guiMain):
         self.rNoiseSpin.setValue(int(self.noise_strength[0]))
         self.gNoiseSpin.setValue(int(self.noise_strength[1]))
         self.bNoiseSpin.setValue(int(self.noise_strength[2]))
-        self.coverageSpin.setValue(self.noise_coverage)
+        self.coverageSpin.setValue(float(self.noise_coverage))
 
         self.openLayersBtn.clicked.connect(self.loadLayersCfg)
         self.openMaskBtn.clicked.connect(self.loadMask)
