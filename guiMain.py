@@ -77,7 +77,7 @@ class MainWindow(QMainWindow, Ui_guiMain):
         self.satmap_path = self.settings.value("satmap_path", "P:\\")
         self.workdrive_path = self.settings.value("workdrive_path", "P:\\")
         self.noise_type = self.settings.value("noise_type", 0)
-        self.noise_strength = self.settings.value("noise_strength", (2,2,2))
+        self.noise_strength = self.settings.value("noise_strength", [2,2,2])
         self.noise_coverage = self.settings.value("noise_coverage", 0.5)
 
         self.thread: CallbackWorker = None
@@ -130,6 +130,7 @@ class MainWindow(QMainWindow, Ui_guiMain):
             logger.setLevel(logging.INFO)
 
         logger.info("Starting ...")
+        logger.debug(f"Params: Layers {self.layers_path}, Mask {self.mask_path}, Satmap {self.satmap_path}, Noise Type {self.noise_type}, Noise Strength {self.noise_strength}, Noise Coverage {self.noise_coverage}%")
         MEMMAP = True
         if MEMMAP:
             logger.info("Creating tempdir")
@@ -166,10 +167,10 @@ class MainWindow(QMainWindow, Ui_guiMain):
 
         if self.noise_type == 2:
             logger.info("Starting sat map noise generation")
-            sat_map = rgb_noise_generation(sat_map, self.noise_strength, self.noise_coverage)
+            sat_map = rgb_noise_generation(sat_map, self.noise_strength, self.noise_coverage/100)
         elif self.noise_type == 1:
             logger.info("Starting sat map noise generation")
-            sat_map = lum_noise_generation(sat_map, self.noise_strength[1], self.noise_coverage)
+            sat_map = lum_noise_generation(sat_map, self.noise_strength[1], self.noise_coverage/100)
         self.progress_update_signal.emit(75)
 
         logger.info("Saving sat map")
