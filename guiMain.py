@@ -87,9 +87,9 @@ class MainWindow(QMainWindow, Ui_guiMain):
         self.satmapPathEdit.setText(self.satmap_path)
         self.workDrivePathEdit.setText(self.workdrive_path)
         self.noiseCombo.setCurrentIndex(self.noise_type)
-        self.rNoiseSpin.setValue(self.noise_strength[0])
-        self.gNoiseSpin.setValue(self.noise_strength[1])
-        self.bNoiseSpin.setValue(self.noise_strength[2])
+        self.rNoiseSpin.setValue(int(self.noise_strength[0]))
+        self.gNoiseSpin.setValue(int(self.noise_strength[1]))
+        self.bNoiseSpin.setValue(int(self.noise_strength[2]))
         self.coverageSpin.setValue(self.noise_coverage)
 
         self.openLayersBtn.clicked.connect(self.loadLayersCfg)
@@ -180,7 +180,6 @@ class MainWindow(QMainWindow, Ui_guiMain):
     @Slot(int)
     def update_progress(self, val):
         self.progressBar.setValue(val)
-        pass
 
     @Slot()
     def loadLayersCfg(self):
