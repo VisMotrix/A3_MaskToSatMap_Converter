@@ -16,11 +16,11 @@ from PySide6.QtGui import (QAction, QBrush, QColor, QConicalGradient,
     QIcon, QImage, QKeySequence, QLinearGradient,
     QPainter, QPalette, QPixmap, QRadialGradient,
     QTransform)
-from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDoubleSpinBox,
-    QFrame, QHBoxLayout, QLabel, QLineEdit,
-    QMainWindow, QMenu, QMenuBar, QProgressBar,
-    QPushButton, QSizePolicy, QSpacerItem, QSpinBox,
-    QStatusBar, QTextEdit, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QApplication, QComboBox, QDoubleSpinBox, QFrame,
+    QHBoxLayout, QLabel, QLineEdit, QMainWindow,
+    QMenu, QMenuBar, QProgressBar, QPushButton,
+    QSizePolicy, QSpacerItem, QSpinBox, QStatusBar,
+    QTextEdit, QVBoxLayout, QWidget)
 
 from qtexteditlogger import QTextEditLogger
 
@@ -31,6 +31,9 @@ class Ui_guiMain(object):
         guiMain.resize(612, 400)
         self.actionLicense = QAction(guiMain)
         self.actionLicense.setObjectName(u"actionLicense")
+        self.actionVerbose_Output = QAction(guiMain)
+        self.actionVerbose_Output.setObjectName(u"actionVerbose_Output")
+        self.actionVerbose_Output.setCheckable(True)
         self.centralwidget = QWidget(guiMain)
         self.centralwidget.setObjectName(u"centralwidget")
         self.verticalLayout = QVBoxLayout(self.centralwidget)
@@ -219,9 +222,10 @@ class Ui_guiMain(object):
 
         self.coverageSpin = QDoubleSpinBox(self.centralwidget)
         self.coverageSpin.setObjectName(u"coverageSpin")
-        self.coverageSpin.setMaximum(1.000000000000000)
-        self.coverageSpin.setSingleStep(0.050000000000000)
-        self.coverageSpin.setValue(0.500000000000000)
+        self.coverageSpin.setDecimals(1)
+        self.coverageSpin.setMaximum(100.000000000000000)
+        self.coverageSpin.setSingleStep(5.000000000000000)
+        self.coverageSpin.setValue(5.000000000000000)
 
         self.horizontalLayout_5.addWidget(self.coverageSpin)
 
@@ -248,15 +252,27 @@ class Ui_guiMain(object):
 
         self.horizontalLayout_4.addItem(self.horizontalSpacer_4)
 
-        self.memSaverChk = QCheckBox(self.centralwidget)
-        self.memSaverChk.setObjectName(u"memSaverChk")
+        self.label_7 = QLabel(self.centralwidget)
+        self.label_7.setObjectName(u"label_7")
 
-        self.horizontalLayout_4.addWidget(self.memSaverChk)
+        self.horizontalLayout_4.addWidget(self.label_7)
 
-        self.verbOutChk = QCheckBox(self.centralwidget)
-        self.verbOutChk.setObjectName(u"verbOutChk")
+        self.workDrivePathEdit = QLineEdit(self.centralwidget)
+        self.workDrivePathEdit.setObjectName(u"workDrivePathEdit")
 
-        self.horizontalLayout_4.addWidget(self.verbOutChk)
+        self.horizontalLayout_4.addWidget(self.workDrivePathEdit)
+
+        self.openPDrvBtn = QPushButton(self.centralwidget)
+        self.openPDrvBtn.setObjectName(u"openPDrvBtn")
+        sizePolicy2 = QSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        sizePolicy2.setHorizontalStretch(0)
+        sizePolicy2.setVerticalStretch(0)
+        sizePolicy2.setHeightForWidth(self.openPDrvBtn.sizePolicy().hasHeightForWidth())
+        self.openPDrvBtn.setSizePolicy(sizePolicy2)
+        self.openPDrvBtn.setMinimumSize(QSize(30, 0))
+        self.openPDrvBtn.setMaximumSize(QSize(30, 16777215))
+
+        self.horizontalLayout_4.addWidget(self.openPDrvBtn)
 
 
         self.verticalLayout.addLayout(self.horizontalLayout_4)
@@ -269,11 +285,11 @@ class Ui_guiMain(object):
 
         self.plainTextEdit = QTextEditLogger(self.centralwidget)
         self.plainTextEdit.setObjectName(u"plainTextEdit")
-        sizePolicy2 = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-        sizePolicy2.setHorizontalStretch(0)
-        sizePolicy2.setVerticalStretch(0)
-        sizePolicy2.setHeightForWidth(self.plainTextEdit.sizePolicy().hasHeightForWidth())
-        self.plainTextEdit.setSizePolicy(sizePolicy2)
+        sizePolicy3 = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        sizePolicy3.setHorizontalStretch(0)
+        sizePolicy3.setVerticalStretch(0)
+        sizePolicy3.setHeightForWidth(self.plainTextEdit.sizePolicy().hasHeightForWidth())
+        self.plainTextEdit.setSizePolicy(sizePolicy3)
         self.plainTextEdit.setMinimumSize(QSize(0, 50))
         self.plainTextEdit.setUndoRedoEnabled(False)
         self.plainTextEdit.setLineWrapMode(QTextEdit.WidgetWidth)
@@ -294,6 +310,7 @@ class Ui_guiMain(object):
 
         self.menubar.addAction(self.menuAbout.menuAction())
         self.menuAbout.addAction(self.actionLicense)
+        self.menuAbout.addAction(self.actionVerbose_Output)
 
         self.retranslateUi(guiMain)
 
@@ -303,6 +320,7 @@ class Ui_guiMain(object):
     def retranslateUi(self, guiMain):
         guiMain.setWindowTitle(QCoreApplication.translate("guiMain", u"ARMA3 - Mask to Sat Map Converter", None))
         self.actionLicense.setText(QCoreApplication.translate("guiMain", u"License", None))
+        self.actionVerbose_Output.setText(QCoreApplication.translate("guiMain", u"Verbose Output", None))
         self.label.setText(QCoreApplication.translate("guiMain", u"Layer.cfg path", None))
 #if QT_CONFIG(tooltip)
         self.layerPathEdit.setToolTip(QCoreApplication.translate("guiMain", u"Path to you layers config file", None))
@@ -352,14 +370,12 @@ class Ui_guiMain(object):
         self.resultBtn.setToolTip(QCoreApplication.translate("guiMain", u"Open folder of output file", None))
 #endif // QT_CONFIG(tooltip)
         self.resultBtn.setText(QCoreApplication.translate("guiMain", u"Open Result", None))
+        self.label_7.setText(QCoreApplication.translate("guiMain", u"A3 Tools Work drive", None))
 #if QT_CONFIG(tooltip)
-        self.memSaverChk.setToolTip(QCoreApplication.translate("guiMain", u"Will store data on disk when it wont fit into RAM.", None))
+        self.workDrivePathEdit.setToolTip(QCoreApplication.translate("guiMain", u"the location of you Arma3 tools etc. ", None))
 #endif // QT_CONFIG(tooltip)
-        self.memSaverChk.setText(QCoreApplication.translate("guiMain", u"Memory Saver", None))
-#if QT_CONFIG(tooltip)
-        self.verbOutChk.setToolTip(QCoreApplication.translate("guiMain", u"Enable verbose logging", None))
-#endif // QT_CONFIG(tooltip)
-        self.verbOutChk.setText(QCoreApplication.translate("guiMain", u"Verbose Output", None))
-        self.menuAbout.setTitle(QCoreApplication.translate("guiMain", u"About", None))
+        self.workDrivePathEdit.setText(QCoreApplication.translate("guiMain", u"P:\\", None))
+        self.openPDrvBtn.setText(QCoreApplication.translate("guiMain", u"...", None))
+        self.menuAbout.setTitle(QCoreApplication.translate("guiMain", u"Help", None))
     # retranslateUi
 

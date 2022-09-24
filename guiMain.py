@@ -75,6 +75,7 @@ class MainWindow(QMainWindow, Ui_guiMain):
         self.layers_path = self.settings.value("layers_path", "P:\\")
         self.mask_path = self.settings.value("mask_path", "P:\\")
         self.satmap_path = self.settings.value("satmap_path", "P:\\")
+        self.workdrive_path = self.settings.value("workdrive_path", "P:\\")
         self.noise_type = self.settings.value("noise_type", 0)
         self.noise_strength = self.settings.value("noise_strength", (2,2,2))
         self.noise_coverage = self.settings.value("noise_coverage", 0.5)
@@ -84,6 +85,7 @@ class MainWindow(QMainWindow, Ui_guiMain):
         self.layerPathEdit.setText(self.layers_path)
         self.maskPathEdit.setText(self.mask_path)
         self.satmapPathEdit.setText(self.satmap_path)
+        self.workDrivePathEdit.setText(self.workdrive_path)
         self.noiseCombo.setCurrentIndex(self.noise_type)
         self.rNoiseSpin.setValue(self.noise_strength[0])
         self.gNoiseSpin.setValue(self.noise_strength[1])
@@ -93,6 +95,7 @@ class MainWindow(QMainWindow, Ui_guiMain):
         self.openLayersBtn.clicked.connect(self.loadLayersCfg)
         self.openMaskBtn.clicked.connect(self.loadMask)
         self.saveAsBtn.clicked.connect(self.saveAs)
+        self.openPDrvBtn.clicked.connect(self.open_p_drive)
         self.startBtn.clicked.connect(self.start)
         self.resultBtn.clicked.connect(self.show_result)
         self.actionLicense.triggered.connect(self.show_license)
@@ -100,6 +103,7 @@ class MainWindow(QMainWindow, Ui_guiMain):
         self.layerPathEdit.editingFinished.connect(self.update_path(self.layers_path, self.layerPathEdit))
         self.maskPathEdit.editingFinished.connect(self.update_path(self.mask_path, self.maskPathEdit))
         self.satmapPathEdit.editingFinished.connect(self.update_path(self.satmap_path, self.satmapPathEdit))
+        self.workDrivePathEdit.editingFinished.connect(self.update_path(self.workdrive_path, self.workDrivePathEdit))
         self.noiseCombo.currentIndexChanged.connect(self.update_noise_type)
         self.rNoiseSpin.valueChanged.connect(lambda x: self.update_noise_strength(0,x))
         self.gNoiseSpin.valueChanged.connect(lambda x: self.update_noise_strength(1,x))
@@ -120,13 +124,13 @@ class MainWindow(QMainWindow, Ui_guiMain):
         self.progressBar.setValue(0)
         app.processEvents()
 
-        if self.verbOutChk.isChecked():
+        if self.actionVerbose_Output.isChecked():
             logger.setLevel(logging.DEBUG)
         else:
             logger.setLevel(logging.INFO)
 
         logger.info("Starting ...")
-        MEMMAP = self.memSaverChk.isChecked()
+        MEMMAP = True
         if MEMMAP:
             logger.info("Creating tempdir")
             TEMPDIR = TemporaryDirectory(prefix="satmapconv_", ignore_cleanup_errors=False)
@@ -200,6 +204,14 @@ class MainWindow(QMainWindow, Ui_guiMain):
             self.satmapPathEdit.setText(file)
             self.satmap_path = file
             self.settings.setValue("satmap_path", file)
+
+    @Slot()
+    def open_p_drive(self):
+        dir = QFileDialog.getExistingDirectory(self, "A3 Tools working directory", dir=os.path.expanduser("~"))
+        if dir:
+            self.workDrivePathEdit.setText(dir)
+            self.workdrive_path = dir
+            self.settings.setValue("workdrive_path", dir)
 
     @Slot()
     def show_result(self):
