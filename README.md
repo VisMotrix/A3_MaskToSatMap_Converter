@@ -40,6 +40,21 @@ In that way we can use the mask and the ground texture to generate a nice satmap
 
 Simply execute `maskToSatMapGUI.exe`
 
+<img src="imgs\gui_prv.png" alt="drawing" style="max-width:100%; text-align: center;"/>
+
+It has several elements:  
+1. Enter the path to your layers.cfg here, you can use the `Open` button to browse the files.
+2. Enter the path to your mask image file here. Can be any image format. Use the `Open` button to browse for the file.
+3. Enter the desired output path and filename for the generated sat map. Or use the `Save as` button to open a dialog. Supported file format is tiff.
+4. Noise setting. Options include `No noise`, `BW noise` (brighter and darker spots) and `RGB noise` (slight color variation for each pixel)
+5. Noise strenght. This defines the maximum possible change of pixel values for the noise generator. It will pick randomly from range +-strength to apply to a pixel. Strength consists of one value for BW noise and 3 values for RGB noise (each color individually).
+6. Noise coverage defines how many pixels are affected by the noise. In percent. Each pixel has this chance of having noise.
+7. A3 Tools workdrive. Is used to complete texture files paths from your layers.cfg or the rvmat files, e.g `myMod/mytextures/ground.rvmat` + `P:/` -> `P:/myMod/mytextures/ground.rvmat`. Adjust according to your texture file locations.  
+8. Click to start the process
+9. Click to open results folder.
+10. Log. Contains information about progress and possible errors.
+
+
 ---
 
 ## Command line version
