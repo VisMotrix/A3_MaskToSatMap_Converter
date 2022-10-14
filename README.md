@@ -102,7 +102,7 @@ Install python, version 3.10 recommended.
 ```
 pip install -r requirements_gui.txt
 pip install pyinstaller 
-pyinstaller guiMain.spec
+pyinstaller build_GUI.spec
 ```
 
 ## Command line version
@@ -110,7 +110,7 @@ pyinstaller guiMain.spec
 ```
 pip install -r requirements.txt
 pip install pyinstaller 
-pyinstaller maskToSatMap.spec
+pyinstaller build_CMD.spec
 ```
 
 Instead of building the exe, you can also directly call the python script with arguments
