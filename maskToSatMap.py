@@ -34,7 +34,8 @@ import tifffile
 import numba as nb
 Image.MAX_IMAGE_PIXELS = None
 
-from globals import *
+import glob_params
+from glob_params import *
 
 
 @dataclass
@@ -114,13 +115,13 @@ def replace_mask_color(mask_path, surfaces: Dict[str, Surface]):
     # apply new lookup table to index array to get new sat image
     logger.info("Creating sat map")
     strt = time.time()
-    if MEMMAP:
-        sat_map = np.memmap(TEMPDIR.name  + "/temp_satmap.dat", mode="w+", dtype=np.uint8, shape=mask.shape)
+    if glob_params.MEMMAP:
+        sat_map = np.memmap(glob_params.TEMPDIR.name  + "/temp_satmap.dat", mode="w+", dtype=np.uint8, shape=mask.shape)
     else:
         sat_map = np.empty(dtype=np.uint8, shape=mask.shape)
 
-    if MEMMAP:
-        mask_32 = np.memmap(TEMPDIR.name  + "/temp_mask32.dat", mode="w+", dtype=np.uint32, shape=(*mask.shape[:2],))
+    if glob_params.MEMMAP:
+        mask_32 = np.memmap(glob_params.TEMPDIR.name  + "/temp_mask32.dat", mode="w+", dtype=np.uint32, shape=(*mask.shape[:2],))
     else:
         mask_32 = np.empty(dtype=np.uint32, shape=(*mask.shape[:2],))
 
@@ -162,11 +163,14 @@ def check_mask_errors(color_map, mask_32, name_map):
 def find_paa_path(rvmat_path):
     """Extracts the path of the paa file corresponding to the given rvmat file"""
     try:
-        with open(WORKDRIVE / rvmat_path) as file:
+        with open(glob_params.workdrive / rvmat_path) as file:
             for line in file:
                 if "_co.paa" in line.lower():
-                    return WORKDRIVE / line.split("=")[1].replace(";", "").replace('"', "").strip()
-    except:
+                    paa_path = glob_params.workdrive / line.split("=")[1].replace(";", "").replace('"', "").strip()
+                    logger.debug(f"Got paa file path {paa_path}")
+                    return paa_path
+    except Exception as ex:
+        logger.error(f"Cannot extract paa path from rvmat file {glob_params.workdrive / rvmat_path} due to:\n" + str(ex))
         return None
 
 def get_paa_avg_col(path):
@@ -178,7 +182,6 @@ def get_paa_avg_col(path):
 
     paa_path = find_paa_path(path)
     if not paa_path: 
-        logger.error(f"Cannot extract paa path from rvmat file {path}")
         return ERRORCOLOR
 
     try:
@@ -269,8 +272,8 @@ def load_image(path):
     strt = time.time()
     img = Image.open(path)
     imshape = (*img.size,len(img.getbands()))
-    if MEMMAP:
-        mask = np.memmap(TEMPDIR.name  + "/temp_mask.dat", mode="w+", dtype=np.uint8, shape=imshape)
+    if glob_params.MEMMAP:
+        mask = np.memmap(glob_params.TEMPDIR.name  + "/temp_mask.dat", mode="w+", dtype=np.uint8, shape=imshape)
     else:
         mask= np.empty(imshape, dtype=np.uint8)
 
@@ -289,9 +292,9 @@ def start(layers, mask, output, variation, noise_coverage, luminance_noise):
     global MEMMAP, TEMPDIR
     logger.info("Starting ...")
     strt = time.time()
-    if MEMMAP:
+    if glob_params.MEMMAP:
         logger.info("Creating tempdir")
-        TEMPDIR = TemporaryDirectory(prefix="satmapconv_", ignore_cleanup_errors=False)
+        glob_params.TEMPDIR = TemporaryDirectory(prefix="satmapconv_", ignore_cleanup_errors=False)
     logger.info("Reading layers.cfg")
     surfaces = read_layers_cfg(layers)
     logger.info("Loading average colors from textures")
@@ -313,14 +316,14 @@ def start(layers, mask, output, variation, noise_coverage, luminance_noise):
     export_map(sat_map ,output)
     del sat_map
     
-    if MEMMAP:
-        shutil.rmtree(TEMPDIR.name)
+    if glob_params.MEMMAP:
+        shutil.rmtree(glob_params.TEMPDIR.name)
         # TEMPDIR.cleanup()
     logger.info("... Done")
     logger.info(f"\tElapsed {time.time() - strt:.2f} s")
     return
 
-def initialize_logger(handlers=None):
+def initialize_logger(handler=None):
     global logger
     logging.raiseExceptions = False
     logger = logging.getLogger(__name__)
@@ -330,11 +333,11 @@ def initialize_logger(handlers=None):
     sh.setLevel(logging.DEBUG)
     logger.addHandler(sh)
 
-    if handlers:
-        handlers.setLevel(logging.DEBUG)
+    if handler:
+        handler.setLevel(logging.DEBUG)
         formatter = logging.Formatter("%(levelname)s: %(message)s")
-        #handler.setFormatter(formatter)
-        logger.addHandler(handlers)
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
 
     return logger
 
@@ -383,14 +386,14 @@ if __name__ == '__main__':
         logger.setLevel(logging.INFO)
 
     if args.memory_saver:
-        MEMMAP = True
+        glob_params.MEMMAP = True
     else:
-        MEMMAP = False
+        glob_params.MEMMAP = False
 
     if args.workdrive: 
         drv = Path(args.workdrive)
         assert drv.exists(), "invalid workdrive"
-        WORKDRIVE = drv
+        glob_params.workdrive = drv
     
     if lum_variation:
         start(layers_path, mask_path, out_path, lum_variation, noise_coverage, True)

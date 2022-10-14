@@ -20,7 +20,7 @@ import os
 import logging
 
 
-from PySide6.QtWidgets import QApplication, QMainWindow, QFileDialog
+from PySide6.QtWidgets import QApplication, QMainWindow, QFileDialog, QLineEdit
 from PySide6.QtCore import QCoreApplication, Slot, Signal, QSettings, Qt, QThread
 
 from form import Ui_guiMain
@@ -28,7 +28,7 @@ from aboutDlg import AboutDialog
 
 from maskToSatMap import *
 
-from globals import *
+import glob_params
 from qtexteditlogger import CustomRichHandler
 
 def qt_path(file):
@@ -59,7 +59,6 @@ class MainWindow(QMainWindow, Ui_guiMain):
     progress_update_signal = Signal(int)
 
     def __init__(self):
-
         super(MainWindow, self).__init__()
         # init UI
         self.setupUi(self)
@@ -72,13 +71,14 @@ class MainWindow(QMainWindow, Ui_guiMain):
 
         self.log = self.plainTextEdit
 
-        self.layers_path = self.settings.value("layers_path", "P:\\")
-        self.mask_path = self.settings.value("mask_path", "P:\\")
-        self.satmap_path = self.settings.value("satmap_path", "P:\\")
-        self.workdrive_path = self.settings.value("workdrive_path", "P:\\")
+        self.layers_path = self.settings.value("layers_path", "P:\\").strip()
+        self.mask_path = self.settings.value("mask_path", "P:\\").strip()
+        self.satmap_path = self.settings.value("satmap_path", "P:\\").strip()
+        self.workdrive_path = self.settings.value("workdrive_path", "P:\\").strip()
+        glob_params.workdrive = pathlib.Path(self.workdrive_path)
         self.noise_type = self.settings.value("noise_type", 0)
         self.noise_strength = self.settings.value("noise_strength", [2,2,2])
-        self.noise_coverage = self.settings.value("noise_coverage", 0.5)
+        self.noise_coverage = float(self.settings.value("noise_coverage", 0.5))
 
         self.thread: CallbackWorker = None
 
@@ -100,10 +100,11 @@ class MainWindow(QMainWindow, Ui_guiMain):
         self.resultBtn.clicked.connect(self.show_result)
         self.actionLicense.triggered.connect(self.show_license)
 
-        self.layerPathEdit.editingFinished.connect(self.update_path(self.layers_path, self.layerPathEdit))
-        self.maskPathEdit.editingFinished.connect(self.update_path(self.mask_path, self.maskPathEdit))
-        self.satmapPathEdit.editingFinished.connect(self.update_path(self.satmap_path, self.satmapPathEdit))
-        self.workDrivePathEdit.editingFinished.connect(self.update_path(self.workdrive_path, self.workDrivePathEdit))
+        self.layerPathEdit.textEdited.connect(lambda x: self.update_path("layers", self.layerPathEdit))
+        # textEdited, textChanged??
+        self.maskPathEdit.textEdited.connect(lambda x: self.update_path("mask", self.maskPathEdit))
+        self.satmapPathEdit.textEdited.connect(lambda x: self.update_path("satmap", self.satmapPathEdit))
+        self.workDrivePathEdit.textEdited.connect(lambda x: self.update_path("workdrive", self.workDrivePathEdit))
         self.noiseCombo.currentIndexChanged.connect(self.update_noise_type)
         self.rNoiseSpin.valueChanged.connect(lambda x: self.update_noise_strength(0,x))
         self.gNoiseSpin.valueChanged.connect(lambda x: self.update_noise_strength(1,x))
@@ -117,7 +118,7 @@ class MainWindow(QMainWindow, Ui_guiMain):
 
     @Slot()
     def start(self):
-        global MEMMAP, TEMPDIR, logger
+        global logger
 
         self.startBtn.setEnabled(False)
 
@@ -131,21 +132,18 @@ class MainWindow(QMainWindow, Ui_guiMain):
 
         logger.info("Starting ...")
         logger.debug(f"Params: Layers {self.layers_path}, Mask {self.mask_path}, Satmap {self.satmap_path}, Noise Type {self.noise_type}, Noise Strength {self.noise_strength}, Noise Coverage {self.noise_coverage}%")
-        MEMMAP = True
-        if MEMMAP:
-            logger.info("Creating tempdir")
-            TEMPDIR = TemporaryDirectory(prefix="satmapconv_", ignore_cleanup_errors=False)
 
-        
+        logger.debug("Creating tempdir")
+        glob_params.TEMPDIR = TemporaryDirectory(prefix="satmapconv_", ignore_cleanup_errors=False)
+
         if self.thread:
             self.thread.wait()
         self.thread = CallbackWorker(self.execute, slotOnFinished=self.finished)
         self.thread.start()
 
     def finished(self):
-        global MEMMAP, TEMPDIR, logger
-        if MEMMAP:
-            shutil.rmtree(TEMPDIR.name)
+        global logger
+        shutil.rmtree(glob_params.TEMPDIR.name)
             # TEMPDIR.cleanup()
         logger.info("... Done")
         self.progressBar.setValue(100)
@@ -153,29 +151,32 @@ class MainWindow(QMainWindow, Ui_guiMain):
 
     def execute(self):
         global logger
-        logger.info("Reading layers.cfg")
-        surfaces = read_layers_cfg(self.layers_path)
-        self.progress_update_signal.emit(25)
+        try:
+            logger.info("Reading layers.cfg")
+            surfaces = read_layers_cfg(self.layers_path)
+            self.progress_update_signal.emit(25)
 
-        logger.info("Loading average colors from textures")
-        surfaces = load_average_colors(surfaces)
-        self.progress_update_signal.emit(33)
+            logger.info("Loading average colors from textures")
+            surfaces = load_average_colors(surfaces)
+            self.progress_update_signal.emit(33)
 
-        logger.info("Starting sat map generation")
-        sat_map = replace_mask_color(self.mask_path, surfaces)
-        self.progress_update_signal.emit(50)
+            logger.info("Starting sat map generation")
+            sat_map = replace_mask_color(self.mask_path, surfaces)
+            self.progress_update_signal.emit(50)
 
-        if self.noise_type == 2:
-            logger.info("Starting sat map noise generation")
-            sat_map = rgb_noise_generation(sat_map, self.noise_strength, self.noise_coverage/100)
-        elif self.noise_type == 1:
-            logger.info("Starting sat map noise generation")
-            sat_map = lum_noise_generation(sat_map, self.noise_strength[1], self.noise_coverage/100)
-        self.progress_update_signal.emit(75)
+            if self.noise_type == 2:
+                logger.info("Starting noise generation")
+                sat_map = rgb_noise_generation(sat_map, self.noise_strength, float(self.noise_coverage)/100)
+            elif self.noise_type == 1:
+                logger.info("Starting noise generation")
+                sat_map = lum_noise_generation(sat_map, int(self.noise_strength[1]), float(self.noise_coverage)/100)
+            self.progress_update_signal.emit(75)
 
-        logger.info("Saving sat map")
-        export_map(sat_map, self.satmap_path)
-        self.progress_update_signal.emit(99)
+            logger.info("Saving sat map")
+            export_map(sat_map, self.satmap_path)
+            self.progress_update_signal.emit(99)
+        except Exception as ex:
+            logger.error("Encountered error while executing: " + str(ex),exc_info=ex,stack_info=True)
 
     @Slot(int)
     def update_progress(self, val):
@@ -185,6 +186,7 @@ class MainWindow(QMainWindow, Ui_guiMain):
     def loadLayersCfg(self):
         file, _ = QFileDialog.getOpenFileName(self, "Select layer file", os.path.dirname(self.layers_path), filter="Config file (*.txt *.cfg *.conf)")
         if file:
+            file = file.strip()
             self.layerPathEdit.setText(file)
             self.layers_path = file
             self.settings.setValue("layers_path", file)
@@ -193,6 +195,7 @@ class MainWindow(QMainWindow, Ui_guiMain):
     def loadMask(self):
         file, _ = QFileDialog.getOpenFileName(self, "Select mask image", os.path.dirname(self.mask_path), filter="Image (*.png *.jpg *.jpeg *.tif *.tiff *.bmp)")
         if file:
+            file = file.strip()
             self.maskPathEdit.setText(file)
             self.mask_path = file
             self.settings.setValue("mask_path", file)
@@ -201,17 +204,20 @@ class MainWindow(QMainWindow, Ui_guiMain):
     def saveAs(self):
         file, _ = QFileDialog.getSaveFileName(self, "Save sat map as", os.path.dirname(self.satmap_path), filter="Image (*.tif *.tiff)")
         if file:
+            file = file.strip()
             self.satmapPathEdit.setText(file)
             self.satmap_path = file
             self.settings.setValue("satmap_path", file)
 
     @Slot()
     def open_p_drive(self):
-        dir = QFileDialog.getExistingDirectory(self, "A3 Tools working directory", dir=os.path.expanduser("~"))
+        dir = QFileDialog.getExistingDirectory(self, "A3 Tools working directory", dir=os.path.expanduser("~")).strip()
         if dir:
+            file = file.strip()
             self.workDrivePathEdit.setText(dir)
             self.workdrive_path = dir
             self.settings.setValue("workdrive_path", dir)
+            glob_params.workdrive = pathlib.Path(self.workdrive_path)
 
     @Slot()
     def show_result(self):
@@ -221,8 +227,22 @@ class MainWindow(QMainWindow, Ui_guiMain):
     def show_license(self):
         dlg = AboutDialog(self)
 
-    def update_path(self, path, lineEdit):
-        path = lineEdit.text
+    @Slot()
+    def update_path(self, path, lineEdit:QLineEdit):
+        match path:
+            case "layers":
+                self.layers_path = lineEdit.text().strip()
+                self.settings.setValue("layers_path", self.layers_path)
+            case "mask":
+                self.mask_path = lineEdit.text().strip()
+                self.settings.setValue("mask_path", self.mask_path)
+            case "satmap":
+                self.satmap_path = lineEdit.text().strip()
+                self.settings.setValue("satmap_path", self.satmap_path)
+            case "workdrive":
+                self.workdrive_path = lineEdit.text().strip()
+                self.settings.setValue("workdrive_path", self.workdrive_path)
+                glob_params.workdrive = pathlib.Path(self.workdrive_path)
 
     @Slot()
     def update_noise_type(self, idx):
