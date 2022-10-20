@@ -281,6 +281,7 @@ def load_image(path):
     logger.debug(f"Loaded mask image in {time.time() - strt:.2f} s")
     # mask = cv2.imread(str(mask_path)).squeeze()
     logger.info(f"Mask loaded {mask.shape[:2]}px")
+    logger.debug(f"Mask shape {mask.shape}")
     return mask
 
 def export_map(sat_map, target_path):
