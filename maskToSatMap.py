@@ -271,16 +271,21 @@ def vec_lum_noise(row, variation, noise_coverage, out):
 def load_image(path):
     strt = time.time()
     img = Image.open(path)
+    colorfmt = "".join(img.getbands())
+    if len(img.getbands()) != 3:
+        logger.warning(f"The image is not in RGB format! Detected format: {colorfmt}. Conversion will be attempted!")
+    img = img.convert("RGB")
     imshape = (*img.size,len(img.getbands()))
     if glob_params.MEMMAP:
         mask = np.memmap(glob_params.TEMPDIR.name  + "/temp_mask.dat", mode="w+", dtype=np.uint8, shape=imshape)
     else:
         mask= np.empty(imshape, dtype=np.uint8)
 
-    mask[:] = np.asarray(img)
+    mask[:] = np.asarray()
     logger.debug(f"Loaded mask image in {time.time() - strt:.2f} s")
     # mask = cv2.imread(str(mask_path)).squeeze()
     logger.info(f"Mask loaded {mask.shape[:2]}px")
+
     logger.debug(f"Mask shape {mask.shape}")
     return mask
 
