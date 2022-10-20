@@ -272,9 +272,11 @@ def load_image(path):
     strt = time.time()
     img = Image.open(path)
     colorfmt = "".join(img.getbands())
+
     if len(img.getbands()) != 3:
         logger.warning(f"The image is not in RGB format! Detected format: {colorfmt}. Conversion will be attempted!")
     img = img.convert("RGB")
+    
     imshape = (*img.size,len(img.getbands()))
     if glob_params.MEMMAP:
         mask = np.memmap(glob_params.TEMPDIR.name  + "/temp_mask.dat", mode="w+", dtype=np.uint8, shape=imshape)
