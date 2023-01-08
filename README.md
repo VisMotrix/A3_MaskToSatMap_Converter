@@ -55,7 +55,7 @@ It has several elements:
 10. Log. Contains information about progress and possible errors.
 
 ## layers.cfg
-Due to regex beeing regex use this layers.cfg foramt and pay atention to spaceing:
+Due to regex beeing regex use this layers.cfg format and pay attention to spacing:
 <details>
 
 ```c#
@@ -73,7 +73,7 @@ class legend
 	class colors
 	{
 		cyt_ung_texture_01[]={{238,130,238}};
-    };
+	};
 };
 ```
 
