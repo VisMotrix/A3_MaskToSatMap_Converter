@@ -54,7 +54,30 @@ It has several elements:
 9. Click to open results folder.
 10. Log. Contains information about progress and possible errors.
 
+## layers.cfg
+Due to regex beeing regex use this layers.cfg foramt and pay atention to spaceing:
+<details>
 
+```c#
+class layers
+{
+	class cyt_ung_texture_01
+	{
+		texture="";
+		material="cytech\cytech_underground_map\cytech_underground_data\groundtextures\cyt_ung_texture_01.rvmat";
+	};
+};
+class legend
+{
+	picture="cytech\cytech_underground_map\cytech_underground_terrain\source\images\maplegend.png";
+	class colors
+	{
+		cyt_ung_texture_01[]={{238,130,238}};
+    };
+};
+```
+
+</details>  
 ---
 
 ## Command line version
