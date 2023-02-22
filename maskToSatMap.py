@@ -46,7 +46,12 @@ class Surface:
     avg_color: tuple[int,int,int] = ERRORCOLOR
 
 def get_mask_avg_col_map(surfaces: list[Surface]):
-    """build colormap from loaded mask colors to loaded average texture colors
+    """build colormap, maps mask colors to average texture colors,
+    i.e. mask colors to sat map colors.
+    
+    creates array with length 0x00ffffff where each index represents a possible mask color in uint32 format
+    0x00RRGGBB. Used as lookup table, each index that represents a mask color points to an rgb tuple containing 
+    the corresponding sat map color. Unused colors will return as pink.
     
     param surfaces: list of Surface objects
     returns: array(256^3,3) colormap, dict[int,str] mask color to texture name map
@@ -60,7 +65,7 @@ def get_mask_avg_col_map(surfaces: list[Surface]):
     return col_map, nmap
 
 def read_layers_cfg(path):
-    """ Reads a arma3 layers.cfg and graps mask color to suface material information
+    """ Reads a arma3 layers.cfg and greps mask color - surface material combinations information
 
     param path: the path to the layers.cfg file
     returns: dict of [texturename, Surface]
@@ -137,9 +142,9 @@ def replace_mask_color(mask_path, surfaces: Dict[str, Surface]):
 @nb.guvectorize(["void(uint8[:,:], uint8[:,:], uint8[:,:], uint32[:])"], "(m,n),(o,n)->(m,n),(m)", target="parallel", cache=True)
 def vec_build_sat_map(mask, color_map, sat_out, mask_out):
     # convert rgb tuple into 32 bit int 0x00RRGGBB, by shifting and adding
-    # mask_32 = np.empty(mask.shape[0], dtype=np.uint32)
     for i in range(mask.shape[0]):
         mask_out[i] = (mask[i,0] << 16) + (mask[i,1] << 8) + (mask[i,2] << 0)
+    # use generated int32 image as index into colormap, yields rgb tuple for each uint32 index
     sat_out[:] = color_map[mask_out]
 
 def check_mask_errors(color_map, mask_32, name_map):
@@ -176,7 +181,7 @@ def find_paa_path(rvmat_path):
 def get_paa_avg_col(path):
     """ Reads a arma3 rvmat file and returns the average color of the corresponding paa file as tuple RGB
 
-    param path: the path to the paa file
+    param path: the path to the rvmat file
     returns: the average color as defined in the paa file as (R,G,B) tuple
     """
 
