@@ -213,7 +213,7 @@ class MainWindow(QMainWindow, Ui_guiMain):
     def open_p_drive(self):
         dir = QFileDialog.getExistingDirectory(self, "A3 Tools working directory", dir=os.path.expanduser("~")).strip()
         if dir:
-            file = file.strip()
+            dir = dir.strip()
             self.workDrivePathEdit.setText(dir)
             self.workdrive_path = dir
             self.settings.setValue("workdrive_path", dir)
