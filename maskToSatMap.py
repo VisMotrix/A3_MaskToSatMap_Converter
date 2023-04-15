@@ -101,7 +101,7 @@ def read_layers_cfg(path):
 
         matches = re.findall(pattern_name_path, file_contents)
         if matches:
-            surfaces[key].path = matches[0].replace(";", "").replace('"', "")
+            surfaces[key].path = matches[0].replace(";", "").replace('"', "").strip()
         else:
             logger.error(f"No material file path found for texture entry in layers.cfg: {key}.")
 
@@ -165,9 +165,10 @@ def check_mask_errors(color_map, mask_32, name_map):
 
 
 
-def find_paa_path(rvmat_path):
+def find_paa_path(rvmat_path: str):
     """Extracts the path of the paa file corresponding to the given rvmat file"""
     try:
+        rvmat_path = rvmat_path.strip()
         with open(glob_params.workdrive / rvmat_path) as file:
             for line in file:
                 if "_co.paa" in line.lower():
