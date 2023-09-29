@@ -33,10 +33,10 @@ from qtexteditlogger import CustomRichHandler
 
 def qt_path(file):
     """ Get absolute path to resource, works for dev and for PyInstaller """
-    try:
+    if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
         # PyInstaller creates a temp folder and stores path in _MEIPASS
         base_path = os.path.join(sys._MEIPASS, 'qt')
-    except Exception:
+    else:
         base_path = os.path.abspath("./qt")
 
     return os.path.join(base_path, file)
